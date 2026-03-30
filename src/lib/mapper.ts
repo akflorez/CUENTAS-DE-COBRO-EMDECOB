@@ -65,7 +65,7 @@ export function mapRawRecord(row: any) {
     honorarios: parseNumber(findCol(row, "HONORARIOS", "HONORARIOS ", "GASTOS COBRANZAS")),
     iva: parseNumber(findCol(row, "IVA", "IVA ")),
     total: parseNumber(findCol(row, "TOTAL", "TOTAL ", "VALOR TOTAL", "TOTAL A PAGAR")),
-    fechaPago: findCol(row, "FECHA DE PAGO", "FECHA PAGO", "FECHA"),
+    fechaPago: findCol(row, "FECHA INGRESO DINERO", "FECHA INGRESO DEL DINERO", "FECHA INGRESO", "FECHA DE PAGO", "FECHA PAGO", "FECHA"),
     estadoCobro: findCol(row, "CUENTA DE COBRO", "CUENTA DE COBRO "),
     asesor: findCol(row, "ASESOR", "ASESOR ", "ASESORA"),
     originalRow: row
