@@ -3,15 +3,22 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAppContext } from "@/context/AppContext";
-import { validateRecord, ValidationResult, groupRecords } from "@/lib/mapper";
-import { CheckCircle2, AlertCircle, ArrowLeft, ArrowRight, Eye, FileSpreadsheet } from "lucide-react";
+import { validateRecord, ValidationResult, groupRecords, MappedRecord } from "@/lib/mapper";
+import { CheckCircle2, AlertCircle, ArrowLeft, ArrowRight, Eye, FileSpreadsheet, Search, Trash2, Save, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { saveInvoiceRecord } from "@/app/actions/invoice";
 
 export default function ValidatePage() {
   const router = useRouter();
   const { excelData, filesData, startingConsecutive } = useAppContext();
   const [filter, setFilter] = useState<'all' | 'valid' | 'invalid'>('all');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<{success: boolean, message: string} | null>(null);
+  
+  // Estado local para permitir eliminar registros de la vista previa de validación
+  const [localRecords, setLocalRecords] = useState<{isValid: boolean; errors: string[]; mapped: MappedRecord}[]>([]);
 
   // Redirigir si no hay data
   useEffect(() => {
@@ -20,27 +27,75 @@ export default function ValidatePage() {
     }
   }, [excelData, router]);
 
-  const validations = useMemo(() => {
-    return groupRecords(excelData, startingConsecutive).map((mapped) => {
-      return {
-        ...validateRecord(mapped),
-        mapped
-      };
-    });
+  // Cargar registros agrupados al inicio
+  useEffect(() => {
+    if (excelData && excelData.length > 0) {
+      const grouped = groupRecords(excelData, startingConsecutive).map((mapped) => {
+        return {
+          ...validateRecord(mapped),
+          mapped
+        };
+      });
+      setLocalRecords(grouped);
+    }
   }, [excelData, startingConsecutive]);
 
   const stats = useMemo(() => {
-    const validCount = validations.filter(v => v.isValid).length;
-    const invalidCount = validations.length - validCount;
-    return { total: validations.length, valid: validCount, invalid: invalidCount };
-  }, [validations]);
+    const validCount = localRecords.filter(v => v.isValid).length;
+    const invalidCount = localRecords.length - validCount;
+    return { total: localRecords.length, valid: validCount, invalid: invalidCount };
+  }, [localRecords]);
 
-  const filteredDocs = validations.filter(v => {
-    if (filter === 'all') return true;
-    if (filter === 'valid') return v.isValid;
-    if (filter === 'invalid') return !v.isValid;
-    return true;
+  const filteredDocs = localRecords.filter(v => {
+    const matchesSearch = (v.mapped.conjuntoNombre || "").toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesFilter = filter === 'all' || (filter === 'valid' ? v.isValid : !v.isValid);
+    return matchesSearch && matchesFilter;
   });
+
+  const handleDelete = (consecutivo: string) => {
+    if (confirm("¿Estás seguro de que deseas eliminar este registro de la validación actual?")) {
+      setLocalRecords(prev => prev.filter(r => r.mapped.consecutivo !== consecutivo));
+    }
+  };
+
+  const handleSaveBatch = async () => {
+    const validOnes = localRecords.filter(r => r.isValid);
+    if (validOnes.length === 0) return;
+
+    setIsSaving(true);
+    setSaveStatus(null);
+    let successCount = 0;
+    let skipCount = 0;
+    let errorCount = 0;
+
+    try {
+      for (const record of validOnes) {
+        const res = await saveInvoiceRecord(record.mapped);
+        if (res.success) {
+          successCount++;
+        } else if (res.error === 'Invoice already exists') {
+          skipCount++;
+        } else {
+          errorCount++;
+        }
+      }
+      
+      let message = `Proceso terminado. `;
+      if (successCount > 0) message += `Guardados: ${successCount}. `;
+      if (skipCount > 0) message += `${skipCount} ya existían. `;
+      if (errorCount > 0) message += `Errores: ${errorCount}.`;
+      
+      setSaveStatus({ 
+        success: errorCount === 0, 
+        message 
+      });
+    } catch (error) {
+      setSaveStatus({ success: false, message: "Ocurrió un error al intentar guardar los registros." });
+    } finally {
+      setIsSaving(false);
+      setTimeout(() => setSaveStatus(null), 5000);
+    }
+  };
 
   if (!excelData || excelData.length === 0) return null;
 
@@ -64,6 +119,16 @@ export default function ValidatePage() {
             <ArrowLeft className="w-4 h-4 mr-2" />
             Cambiar Archivo
           </Link>
+          
+          <button 
+            disabled={isSaving || stats.valid === 0}
+            onClick={handleSaveBatch}
+            className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 flex items-center shadow-sm transition-all active:scale-95 disabled:opacity-50"
+          >
+            {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+            {isSaving ? "Guardando..." : "Guardar en Dashboard"}
+          </button>
+
           <button 
             disabled={stats.valid === 0}
             onClick={() => router.push("/dashboard/preview")}
@@ -74,6 +139,16 @@ export default function ValidatePage() {
           </button>
         </div>
       </div>
+
+      {saveStatus && (
+        <div className={cn(
+          "mb-6 p-4 rounded-xl border flex items-center animate-in slide-in-from-top-2",
+          saveStatus.success ? "bg-green-50 border-green-200 text-green-800" : "bg-red-50 border-red-200 text-red-800"
+        )}>
+          {saveStatus.success ? <CheckCircle2 className="w-5 h-5 mr-3" /> : <AlertCircle className="w-5 h-5 mr-3" />}
+          <span className="font-medium">{saveStatus.message}</span>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -105,26 +180,39 @@ export default function ValidatePage() {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex border-b border-slate-200 mb-6 space-x-8">
-        <button
-          onClick={() => setFilter('all')}
-          className={cn("pb-4 text-sm font-medium border-b-2 transition-colors", filter === 'all' ? "border-blue-600 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700")}
-        >
-          Todos los registros ({stats.total})
-        </button>
-        <button
-          onClick={() => setFilter('valid')}
-          className={cn("pb-4 text-sm font-medium border-b-2 transition-colors", filter === 'valid' ? "border-green-600 text-green-600" : "border-transparent text-slate-500 hover:text-slate-700")}
-        >
-          Válidos ({stats.valid})
-        </button>
-        <button
-          onClick={() => setFilter('invalid')}
-          className={cn("pb-4 text-sm font-medium border-b-2 transition-colors", filter === 'invalid' ? "border-red-600 text-red-600" : "border-transparent text-slate-500 hover:text-slate-700")}
-        >
-          Con Errores ({stats.invalid})
-        </button>
+      {/* Filters & Search */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 mb-6">
+        <div className="flex space-x-8">
+          <button
+            onClick={() => setFilter('all')}
+            className={cn("pb-4 text-sm font-medium border-b-2 transition-colors", filter === 'all' ? "border-blue-600 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700")}
+          >
+            Todos ({stats.total})
+          </button>
+          <button
+            onClick={() => setFilter('valid')}
+            className={cn("pb-4 text-sm font-medium border-b-2 transition-colors", filter === 'valid' ? "border-green-600 text-green-600" : "border-transparent text-slate-500 hover:text-slate-700")}
+          >
+            Válidos ({stats.valid})
+          </button>
+          <button
+            onClick={() => setFilter('invalid')}
+            className={cn("pb-4 text-sm font-medium border-b-2 transition-colors", filter === 'invalid' ? "border-red-600 text-red-600" : "border-transparent text-slate-500 hover:text-slate-700")}
+          >
+            Con Errores ({stats.invalid})
+          </button>
+        </div>
+
+        <div className="relative pb-4 md:w-64">
+           <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+           <input 
+              type="text" 
+              placeholder="Buscar conjunto..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+           />
+        </div>
       </div>
 
       {/* Table */}
@@ -136,14 +224,15 @@ export default function ValidatePage() {
                 <th scope="col" className="px-6 py-4">Estado</th>
                 <th scope="col" className="px-6 py-4">Conjunto / Cartera</th>
                 <th scope="col" className="px-6 py-4">Asesor</th>
-                <th scope="col" className="px-6 py-4">Registros Agrupados</th>
+                <th scope="col" className="px-6 py-4">Registros</th>
                 <th scope="col" className="px-6 py-4 text-right">Monto Total</th>
                 <th scope="col" className="px-6 py-4">Observaciones</th>
+                <th scope="col" className="px-6 py-4 text-center">Acción</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200 max-h-[500px] overflow-y-auto">
+            <tbody className="divide-y divide-slate-200">
               {filteredDocs.map((item, idx) => (
-                <tr key={idx} className={cn("hover:bg-slate-50/50 transition-colors", !item.isValid && "bg-red-50/30")}>
+                <tr key={item.mapped.consecutivo || idx} className={cn("hover:bg-slate-50/50 transition-colors group", !item.isValid && "bg-red-50/30")}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {item.isValid ? (
                       <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
@@ -155,23 +244,32 @@ export default function ValidatePage() {
                       </span>
                     )}
                   </td>
-                  <td className="px-6 py-4 font-medium text-slate-900 border-l border-transparent">
+                  <td className="px-6 py-4 font-medium text-slate-900">
                     {item.mapped.conjuntoNombre || <span className="text-slate-400 italic">No definido</span>}
                   </td>
                   <td className="px-6 py-4 text-slate-500">
                     {item.mapped.asesor || "-"}
                   </td>
-                  <td className="px-6 py-4 text-slate-500 max-w-[200px] truncate">
-                    {item.mapped.items ? item.mapped.items.length : 0} recibos pendientes
+                  <td className="px-6 py-4 text-slate-500">
+                    {item.mapped.items ? item.mapped.items.length : 0} items
                   </td>
                   <td className="px-6 py-4 font-medium text-slate-900 text-right">
                     {item.mapped.granTotal > 0 
-                      ? new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(item.mapped.granTotal)
+                      ? new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(item.mapped.granTotal)
                       : <span className="text-red-500 font-normal">Falta valor</span>
                     }
                   </td>
-                  <td className="px-6 py-4 text-xs text-red-600 max-w-[250px] truncate">
-                    {!item.isValid ? item.errors.join(", ") : <span className="text-slate-400 font-normal">Listo para generar</span>}
+                  <td className="px-6 py-4 text-xs text-red-600 max-w-[200px] truncate">
+                    {!item.isValid ? item.errors.join(", ") : <span className="text-slate-400 font-normal">Listo</span>}
+                  </td>
+                  <td className="px-6 py-4 text-center">
+                    <button 
+                      onClick={() => handleDelete(item.mapped.consecutivo)}
+                      className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                      title="Eliminar"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -181,7 +279,7 @@ export default function ValidatePage() {
         
         {filteredDocs.length === 0 && (
           <div className="py-12 text-center text-slate-500">
-            No se encontraron registros en esta categoría.
+            {searchTerm ? `No se encontraron resultados para "${searchTerm}"` : "No se encontraron registros en esta categoría."}
           </div>
         )}
       </div>

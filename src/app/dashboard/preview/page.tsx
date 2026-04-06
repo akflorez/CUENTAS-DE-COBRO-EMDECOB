@@ -101,6 +101,11 @@ export default function PreviewPage() {
     try {
       const name = `${currentRecordMerged.conjuntoNombre || 'Conjunto'}.pdf`.replace(/[^a-zA-Z0-9_.-]/g, '_');
       await downloadPdf(currentPreviewRef.current, name, pdfFormat, pdfOrientation);
+      
+      // Guardar en Base de Datos
+      const { saveInvoiceRecord } = await import("@/app/actions/invoice");
+      await saveInvoiceRecord(currentRecordMerged);
+
     } catch (e) {
       console.error('PDF error:', e);
       alert(`Error al generar el PDF: ${e instanceof Error ? e.message : String(e)}`);
@@ -127,6 +132,13 @@ export default function PreviewPage() {
       const zipFallbackName = filesData.length === 1 ? filesData[0].fileName.replace('.xlsx', '') : `Lote_${filesData.length}_Archivos`;
       await downloadPdfsAsZip(elements, names, `Cuentas_Cobro_${zipFallbackName}.zip`, pdfFormat, pdfOrientation);
       
+      // Guardar todo en Base de Datos
+      const { saveInvoiceRecord } = await import("@/app/actions/invoice");
+      for (let i = 0; i < validRecords.length; i++) {
+        const merged = { ...validRecords[i].mapped, ...(overrides[i] || {}) };
+        await saveInvoiceRecord(merged);
+      }
+
     } catch (e) {
       console.error('ZIP error:', e);
       alert(`Error al generar el archivo ZIP: ${e instanceof Error ? e.message : String(e)}`);

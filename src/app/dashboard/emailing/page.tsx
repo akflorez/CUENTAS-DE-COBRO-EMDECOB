@@ -182,6 +182,10 @@ export default function EmailingPage() {
                     setSendingState(prev => ({ ...prev, isActive: false }));
                     return;
                 }
+            } else {
+                // Guardar en la base de datos
+                const { saveInvoiceRecord } = await import("@/app/actions/invoice");
+                await saveInvoiceRecord(match.invoice.mapped);
             }
             
             // Pausa de cortesía para no colapsar la memoria del cliente ni ser bloqueado por Spam limits

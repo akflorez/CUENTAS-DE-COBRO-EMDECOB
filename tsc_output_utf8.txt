@@ -1,0 +1,2 @@
+﻿src/app/dashboard/gestion/page.tsx(16,19): error TS2345: Argument of type '({ items: { id: string; fechaPago: string | null; invoiceId: string; predio: string; capital: number; intereses: number; honorarios: number; iva: number; total: number; }[]; } & { id: string; consecutivo: string; ... 12 more ...; updatedAt: Date; })[] | undefined' is not assignable to parameter of type 'SetStateAction<any[]>'.
+  Type 'undefined' is not assignable to type 'SetStateAction<any[]>'.

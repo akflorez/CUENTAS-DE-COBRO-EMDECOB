@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FileText, LayoutDashboard, LogOut, FileUp, Eye, ChevronRight, ChevronLeft, Send } from "lucide-react";
+import { FileText, LayoutDashboard, LogOut, FileUp, Eye, ChevronRight, ChevronLeft, Send, ListChecks } from "lucide-react";
 
 export default function DashboardLayout({
   children,
@@ -19,6 +19,7 @@ export default function DashboardLayout({
     { href: "/dashboard/validate", label: "Validación", icon: Eye },
     { href: "/dashboard/preview", label: "Vista Previa", icon: FileText },
     { href: "/dashboard/emailing", label: "Enviar por Correo", icon: Send },
+    { href: "/dashboard/gestion", label: "Gestión Recaudos", icon: ListChecks },
   ];
 
   return (
