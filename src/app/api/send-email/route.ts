@@ -33,6 +33,7 @@ export async function POST(req: Request) {
 
     const mailOptions = {
       from: `"EMDECOB S.A.S" <${smtpUser}>`,
+      replyTo: "direccioncarteraphorizontal@emdecob.com",
       to: toEmail,
       subject: `Cuenta de Cobro PH: ${conjuntoName} - EMDECOB S.A.S`,
       text: `Buen día,\n\nAdjunto enviamos la cuenta de cobro correspondiente a la gestión de cobro de cartera de propiedad horizontal para ${conjuntoName}.\n\nPara dudas o confirmaciones de pago, comuníquese a nuestros canales oficiales detallados en el PDF.\n\nCordialmente,\nEMDECOB S.A.S`,
