@@ -101,7 +101,7 @@ export async function updateInvoiceStatus(
   observacion?: string,
 ) {
   try {
-    const updated = await prisma.invoice.update({
+    const updated = await (prisma.invoice as any).update({
       where: { id },
       data: {
         status,
@@ -171,7 +171,7 @@ export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | 
     let paidCountWithDates = 0;
     const dailyTrends: Record<string, { generated: number, collected: number }> = {};
 
-    invoices.forEach(inv => {
+    invoices.forEach((inv: any) => {
       // Trends by day created
       const dateKey = inv.createdAt.toISOString().split('T')[0];
       if (!dailyTrends[dateKey]) dailyTrends[dateKey] = { generated: 0, collected: 0 };
