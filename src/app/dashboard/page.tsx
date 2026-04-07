@@ -55,13 +55,18 @@ export default function DashboardIndex() {
 
   const fetchDbStats = React.useCallback(async () => {
     setLoadingStats(true);
-    const start = dbStartDate ? new Date(dbStartDate) : null;
-    const end = dbEndDate ? new Date(dbEndDate) : null;
-    const res = await getInvoiceStats(start, end, dbConjunto);
-    if (res.success) {
-      setDbStats(res.stats);
+    try {
+      const start = dbStartDate ? new Date(dbStartDate) : null;
+      const end = dbEndDate ? new Date(dbEndDate) : null;
+      const res = await getInvoiceStats(start, end, dbConjunto);
+      if (res.success) {
+        setDbStats(res.stats);
+      }
+    } catch (err) {
+      console.error("Dashboard Stats Error:", err);
+    } finally {
+      setLoadingStats(false);
     }
-    setLoadingStats(false);
   }, [dbStartDate, dbEndDate, dbConjunto]);
 
   const loadInitialData = React.useCallback(async () => {

@@ -55,18 +55,25 @@ export async function getInvoices(page: number = 1, pageSize: number = 20, conju
       where.conjuntoNombre = conjunto;
     }
 
-    const [invoices, totalCount] = await Promise.all([
-      prisma.invoice.findMany({
-        where,
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-        orderBy: { createdAt: 'desc' },
-        include: {
-          items: true
-        }
-      }),
-      prisma.invoice.count({ where })
-    ]);
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error("Tiempo de espera agotado conectando con la base de datos.")), 15000)
+    );
+
+    const [invoices, totalCount] = await Promise.race([
+      Promise.all([
+        (prisma.invoice as any).findMany({
+          where,
+          skip: (page - 1) * pageSize,
+          take: pageSize,
+          orderBy: { createdAt: 'desc' },
+          include: {
+            items: true
+          }
+        }),
+        (prisma.invoice as any).count({ where })
+      ]),
+      timeoutPromise
+    ]) as any;
 
     return { 
       success: true, 
@@ -154,7 +161,14 @@ export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | 
       where.conjuntoNombre = conjunto;
     }
 
-    const invoices = await prisma.invoice.findMany({ where });
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error("Tiempo de espera agotado conectando con la base de datos.")), 15000)
+    );
+
+    const invoices = await Promise.race([
+      (prisma.invoice as any).findMany({ where }),
+      timeoutPromise
+    ]) as any[];
     
     const stats = {
       totalPendiente: 0,
