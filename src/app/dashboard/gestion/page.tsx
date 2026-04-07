@@ -13,22 +13,32 @@ export default function GestionPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [dbConjunto, setDbConjunto] = useState("Todos");
   const [conjuntos, setConjuntos] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
 
   const loadData = React.useCallback(async () => {
     setLoading(true);
-    const [invRes, conjRes] = await Promise.all([
-      getInvoices(page, 20, dbConjunto),
-      getConjuntos()
-    ]);
-    
-    if (invRes.success) {
-      setInvoices(invRes.invoices || []);
-      setTotalPages(invRes.totalPages || 1);
-      setTotalCount(invRes.totalCount || 0);
-    }
-    if (conjRes.success) {
-      setConjuntos(conjRes.conjuntos || []);
+    setError(null);
+    try {
+      const [invRes, conjRes] = await Promise.all([
+        getInvoices(page, 20, dbConjunto),
+        getConjuntos()
+      ]);
+      
+      if (invRes.success) {
+        setInvoices(invRes.invoices || []);
+        setTotalPages(invRes.totalPages || 1);
+        setTotalCount(invRes.totalCount || 0);
+      } else {
+        setError(invRes.error || "Error cargando facturas.");
+      }
+
+      if (conjRes.success) {
+        setConjuntos(conjRes.conjuntos || []);
+      }
+    } catch (err: any) {
+      setError("Error crítico de conexión.");
+      console.error(err);
     }
     setLoading(false);
   }, [page, dbConjunto]);
@@ -160,6 +170,18 @@ export default function GestionPage() {
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
             Cargando registros...
+          </div>
+        ) : error ? (
+          <div className="p-12 text-center text-rose-500 bg-rose-50/50">
+            <AlertCircle className="w-12 h-12 text-rose-300 mb-3 mx-auto" />
+            <p className="font-bold">Error al cargar datos</p>
+            <p className="text-sm mt-1">{error}</p>
+            <button 
+              onClick={() => loadData()}
+              className="mt-4 px-4 py-2 bg-rose-500 text-white rounded-lg text-xs font-bold hover:bg-rose-600 transition-all"
+            >
+              Reintentar
+            </button>
           </div>
         ) : invoices.length === 0 ? (
           <div className="p-12 text-center text-slate-500">
