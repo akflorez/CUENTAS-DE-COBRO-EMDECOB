@@ -89,8 +89,8 @@ export default function ValidatePage() {
         success: errorCount === 0, 
         message 
       });
-    } catch (error) {
-      setSaveStatus({ success: false, message: "Ocurrió un error al intentar guardar los registros." });
+    } catch (error: any) {
+      setSaveStatus({ success: false, message: "Error técnico al guardar: " + (error.message || "Fallo inesperado") });
     } finally {
       setIsSaving(false);
       setTimeout(() => setSaveStatus(null), 5000);

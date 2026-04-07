@@ -37,7 +37,7 @@ export default function GestionPage() {
         setConjuntos(conjRes.conjuntos || []);
       }
     } catch (err: any) {
-      setError("Error crítico de conexión.");
+      setError("Error crítico: " + (err.message || "Conexión fallida"));
       console.error(err);
     }
     setLoading(false);
