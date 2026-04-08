@@ -41,7 +41,7 @@ export async function saveInvoiceRecord(data: MappedRecord) {
     });
 
     revalidatePath('/dashboard/gestion');
-    return { success: true, invoice };
+    return JSON.parse(JSON.stringify({ success: true, invoice }));
   } catch (error: any) {
     console.error('Error saving invoice record:', error);
     return { success: false, error: error.message };
@@ -75,12 +75,12 @@ export async function getInvoices(page: number = 1, pageSize: number = 20, conju
       timeoutPromise
     ]) as any;
 
-    return { 
+    return JSON.parse(JSON.stringify({ 
       success: true, 
       invoices, 
       totalCount,
       totalPages: Math.ceil(totalCount / pageSize)
-    };
+    }));
   } catch (error: any) {
     console.error('Error fetching invoices:', error);
     return { success: false, error: error.message };
@@ -120,7 +120,7 @@ export async function updateInvoiceStatus(
     });
     revalidatePath('/dashboard/gestion');
     revalidatePath('/dashboard');
-    return { success: true, invoice: updated };
+    return JSON.parse(JSON.stringify({ success: true, invoice: updated }));
   } catch (error: any) {
     console.error('Error updating invoice:', error);
     return { success: false, error: error.message };
@@ -222,7 +222,7 @@ export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | 
       .sort((a, b) => a.date.localeCompare(b.date))
       .slice(-15); // Show last 15 days of activity
 
-    return { success: true, stats };
+    return JSON.parse(JSON.stringify({ success: true, stats }));
   } catch (error: any) {
     console.error('Error calculating stats:', error);
     return { success: false, error: error.message };
