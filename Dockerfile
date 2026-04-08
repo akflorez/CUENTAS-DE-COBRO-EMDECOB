@@ -12,7 +12,8 @@ RUN apt-get update && apt-get install -y \
     libpango1.0-dev \
     libjpeg-dev \
     libgif-dev \
-    librsvg2-dev
+    librsvg2-dev \
+    openssl
 
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -20,6 +21,7 @@ RUN npm ci
 # Stage 2: Build the application
 FROM node:20-slim AS builder
 WORKDIR /app
+RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
@@ -38,6 +40,7 @@ RUN apt-get update && apt-get install -y \
     librsvg2-2 \
     libfontconfig1 \
     fonts-dejavu-core \
+    openssl \
     --no-install-recommends && \
     rm -rf /var/lib/apt/lists/*
 
