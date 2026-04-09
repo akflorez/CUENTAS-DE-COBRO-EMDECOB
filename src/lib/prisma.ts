@@ -18,10 +18,7 @@ export function getPrisma() {
     log: ['error', 'warn'],
   });
 
-  if (process.env.NODE_ENV !== 'production') {
-    globalForPrisma.prisma = prisma;
-  }
-  
+  // Test the connection if possible or just return
   return prisma;
 }
 
