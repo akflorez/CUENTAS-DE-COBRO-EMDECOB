@@ -1,18 +1,20 @@
 'use server'
 
-import prisma from '@/lib/prisma'
+import { getPrisma } from '@/lib/prisma'
 import { MappedRecord } from '@/lib/mapper'
 import { revalidatePath } from 'next/cache'
 
 export async function saveInvoiceRecord(data: MappedRecord) {
   try {
+    const prisma = getPrisma();
+    
     // Verify if it exists to avoid duplicates
     const existing = await prisma.invoice.findUnique({
       where: { consecutivo: data.consecutivo }
     });
 
     if (existing) {
-      return { success: false, error: 'Invoice already exists' };
+      return JSON.parse(JSON.stringify({ success: false, error: 'Invoice already exists' }));
     }
 
     const invoice = await prisma.invoice.create({
@@ -56,6 +58,7 @@ export async function saveInvoiceRecord(data: MappedRecord) {
 
 export async function getInvoices(page: number = 1, pageSize: number = 20, conjunto?: string) {
   try {
+    const prisma = getPrisma();
     const where: any = {};
     if (conjunto && conjunto !== "Todos") {
       where.conjuntoNombre = conjunto;
@@ -95,6 +98,7 @@ export async function getInvoices(page: number = 1, pageSize: number = 20, conju
 
 export async function getConjuntos() {
   try {
+    const prisma = getPrisma();
     const conjuntos = await prisma.invoice.groupBy({
       by: ['conjuntoNombre'],
     });
@@ -114,6 +118,7 @@ export async function updateInvoiceStatus(
   observacion?: string,
 ) {
   try {
+    const prisma = getPrisma();
     const updated = await (prisma.invoice as any).update({
       where: { id },
       data: {
@@ -124,8 +129,11 @@ export async function updateInvoiceStatus(
         ...(observacion !== undefined ? { observacion } : {})
       }
     });
-    revalidatePath('/dashboard/gestion');
-    revalidatePath('/dashboard');
+    try {
+        revalidatePath('/dashboard/gestion');
+        revalidatePath('/dashboard');
+    } catch (e) { console.warn('revalidatePath error:', e); }
+
     return JSON.parse(JSON.stringify({ success: true, invoice: updated }));
   } catch (error: any) {
     console.error('Error updating invoice:', error);
@@ -135,6 +143,7 @@ export async function updateInvoiceStatus(
 
 export async function deleteInvoice(id: string) {
   try {
+    const prisma = getPrisma();
     await prisma.invoice.delete({
       where: { id }
     });
@@ -152,6 +161,7 @@ export async function deleteInvoice(id: string) {
 
 export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | null, conjunto?: string) {
   try {
+    const prisma = getPrisma();
     const where: any = {};
     if (startDate || endDate) {
       where.createdAt = {};

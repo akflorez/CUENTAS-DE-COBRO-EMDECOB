@@ -2,7 +2,13 @@ import { PrismaClient } from '@prisma/client';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 
-const createPrismaClient = () => {
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClient | undefined;
+};
+
+export function getPrisma() {
+  if (globalForPrisma.prisma) return globalForPrisma.prisma;
+
   const url = process.env.DATABASE_URL || "postgresql://postgres:postgres@localhost:5432/dummy_db";
   
   const pool = new Pool({ 
@@ -17,15 +23,14 @@ const createPrismaClient = () => {
   });
 
   const adapter = new PrismaPg(pool);
-  return new PrismaClient({ adapter });
-};
+  const prisma = new PrismaClient({ adapter });
 
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
-};
+  if (process.env.NODE_ENV !== 'production') {
+    globalForPrisma.prisma = prisma;
+  }
+  
+  return prisma;
+}
 
-const prisma = globalForPrisma.prisma ?? createPrismaClient();
-
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
-
-export default prisma;
+// Keep default export for backward compatibility but as the getter
+export default getPrisma;

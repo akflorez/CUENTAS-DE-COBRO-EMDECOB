@@ -1,11 +1,11 @@
-import React from 'react';
-import prisma from '@/lib/prisma';
+import { getPrisma } from '@/lib/prisma';
 import { AlertCircle, CheckCircle2, ShieldAlert } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
 async function checkDatabase() {
   try {
+    const prisma = getPrisma();
     const start = Date.now();
     await prisma.$queryRaw`SELECT 1`;
     return { success: true, time: Date.now() - start };
