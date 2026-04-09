@@ -19,22 +19,18 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 # Stage 2: Build the application
-FROM node:20-slim AS builder
+FROM node:20.18.3-bookworm-slim AS builder
 WORKDIR /app
-ARG DATABASE_URL
-ENV DATABASE_URL=$DATABASE_URL
 RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-RUN DATABASE_URL="postgresql://postgres:postgres@localhost:5432/dummy_db" npx prisma generate
 RUN npm run build
 
 # Stage 3: Production server
-FROM node:20-slim AS runner
+FROM node:20.18.3-bookworm-slim AS runner
 WORKDIR /app
 
-# Install runtime dependencies for native modules
 RUN apt-get update && apt-get install -y \
     libcairo2 \
     libpango-1.0-0 \
@@ -48,6 +44,9 @@ RUN apt-get update && apt-get install -y \
     rm -rf /var/lib/apt/lists/*
 
 ENV NODE_ENV production
+ENV HOME=/tmp
+ENV PORT 3000
+ENV HOSTNAME "0.0.0.0"
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
@@ -60,8 +59,5 @@ COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
 USER nextjs
 
 EXPOSE 3000
-ENV PORT 3000
-ENV HOSTNAME "0.0.0.0"
-ENV HOME=/tmp
 
 CMD ["npm", "run", "start"]
