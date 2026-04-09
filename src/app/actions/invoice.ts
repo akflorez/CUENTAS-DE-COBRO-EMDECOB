@@ -40,7 +40,13 @@ export async function saveInvoiceRecord(data: MappedRecord) {
       }
     });
 
-    revalidatePath('/dashboard/gestion');
+    const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+    await sleep(200); 
+
+    try {
+      revalidatePath('/dashboard/gestion');
+    } catch (e) { console.warn('revalidatePath error:', e); }
+
     return JSON.parse(JSON.stringify({ success: true, invoice }));
   } catch (error: any) {
     console.error('Error saving invoice record:', error);
@@ -132,8 +138,11 @@ export async function deleteInvoice(id: string) {
     await prisma.invoice.delete({
       where: { id }
     });
-    revalidatePath('/dashboard/gestion');
-    revalidatePath('/dashboard');
+    try {
+      revalidatePath('/dashboard/gestion');
+      revalidatePath('/dashboard');
+    } catch (e) { console.warn('revalidatePath error:', e); }
+    
     return JSON.parse(JSON.stringify({ success: true }));
   } catch (error: any) {
     console.error('Error deleting invoice:', error);
