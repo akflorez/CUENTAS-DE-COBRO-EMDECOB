@@ -44,7 +44,7 @@ export async function saveInvoiceRecord(data: MappedRecord) {
     return JSON.parse(JSON.stringify({ success: true, invoice }));
   } catch (error: any) {
     console.error('Error saving invoice record:', error);
-    return { success: false, error: error.message };
+    return JSON.parse(JSON.stringify({ success: false, error: error.message }));
   }
 }
 
@@ -83,7 +83,7 @@ export async function getInvoices(page: number = 1, pageSize: number = 20, conju
     }));
   } catch (error: any) {
     console.error('Error fetching invoices:', error);
-    return { success: false, error: error.message };
+    return JSON.parse(JSON.stringify({ success: false, error: error.message }));
   }
 }
 
@@ -92,10 +92,10 @@ export async function getConjuntos() {
     const conjuntos = await prisma.invoice.groupBy({
       by: ['conjuntoNombre'],
     });
-    return { success: true, conjuntos: conjuntos.map(c => c.conjuntoNombre) };
+    return JSON.parse(JSON.stringify({ success: true, conjuntos: conjuntos.map(c => c.conjuntoNombre) }));
   } catch (error: any) {
     console.error('Error fetching conjuntos:', error);
-    return { success: false, error: error.message };
+    return JSON.parse(JSON.stringify({ success: false, error: error.message }));
   }
 }
 
@@ -123,7 +123,7 @@ export async function updateInvoiceStatus(
     return JSON.parse(JSON.stringify({ success: true, invoice: updated }));
   } catch (error: any) {
     console.error('Error updating invoice:', error);
-    return { success: false, error: error.message };
+    return JSON.parse(JSON.stringify({ success: false, error: error.message }));
   }
 }
 
@@ -134,10 +134,10 @@ export async function deleteInvoice(id: string) {
     });
     revalidatePath('/dashboard/gestion');
     revalidatePath('/dashboard');
-    return { success: true };
+    return JSON.parse(JSON.stringify({ success: true }));
   } catch (error: any) {
     console.error('Error deleting invoice:', error);
-    return { success: false, error: error.message };
+    return JSON.parse(JSON.stringify({ success: false, error: error.message }));
   }
 }
 
@@ -225,6 +225,6 @@ export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | 
     return JSON.parse(JSON.stringify({ success: true, stats }));
   } catch (error: any) {
     console.error('Error calculating stats:', error);
-    return { success: false, error: error.message };
+    return JSON.parse(JSON.stringify({ success: false, error: error.message }));
   }
 }
