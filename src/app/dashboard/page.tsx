@@ -39,14 +39,15 @@ export default function DashboardIndex() {
   const monthStats = useMemo(() => getMonthStats(mappedRecords), [mappedRecords]);
   const { minDate, maxDate } = useMemo(() => getDateRangeStats(mappedRecords), [mappedRecords]);
   
+  const [loadingStats, setLoadingStats] = React.useState(false);
   const [dbStats, setDbStats] = React.useState<any>(null);
+  const [matrixMode, setMatrixMode] = React.useState<'money' | 'percent'>('percent');
   const [dbStartDate, setDbStartDate] = React.useState<string>("");
   const [dbEndDate, setDbEndDate] = React.useState<string>("");
   const [dbMonth, setDbMonth] = React.useState<string>("");
   const [dbYear, setDbYear] = React.useState<string>(new Date().getFullYear().toString());
   const [dbConjunto, setDbConjunto] = React.useState<string>("Todos");
   const [conjuntos, setConjuntos] = React.useState<string[]>([]);
-  const [loadingStats, setLoadingStats] = React.useState(false);
 
   const months = [
     { value: "01", label: "Enero" }, { value: "02", label: "Febrero" },
@@ -403,6 +404,108 @@ export default function DashboardIndex() {
                       );
                     })}
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* MATRIZ VINTAGE: LA REJILLA DE CALOR (COMO EL EXCEL) */}
+            {dbStats.cohortHistory && dbStats.cohortHistory.length > 0 && (
+              <div className="md:col-span-4 bg-white rounded-3xl shadow-xl border border-slate-100 p-8 mt-10">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+                  <div>
+                    <h3 className="text-xl font-black text-slate-800 flex items-center gap-3">
+                       <FileSpreadsheet className="w-6 h-6 text-indigo-500" />
+                       Matriz de Maduración de Cartera (Vintage)
+                    </h3>
+                    <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest mt-1">Análisis de flujo de caja por mes relativo de recaudo</p>
+                  </div>
+
+                  {/* SELECTOR DE MODO: PLATA VS PORCENTAJE */}
+                  <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200 shadow-inner">
+                    <button 
+                      onClick={() => setMatrixMode('money')}
+                      className={`px-6 py-2.5 rounded-xl text-[11px] font-black transition-all flex items-center gap-2 ${matrixMode === 'money' ? 'bg-white text-indigo-600 shadow-md scale-105' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                      <Scale className="w-3 h-3" /> VER EN PESOS ($)
+                    </button>
+                    <button 
+                      onClick={() => setMatrixMode('percent')}
+                      className={`px-6 py-2.5 rounded-xl text-[11px] font-black transition-all flex items-center gap-2 ${matrixMode === 'percent' ? 'bg-white text-rose-600 shadow-md scale-105' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                      <TrendingUp className="w-3 h-3" /> VER EN PORCENTAJE (%)
+                    </button>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto rounded-3xl border border-slate-100 shadow-inner scrollbar-hide">
+                  <table className="w-full text-left border-collapse min-w-[1000px]">
+                    <thead>
+                      <tr className="bg-slate-50/80 border-b border-slate-100">
+                        <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-100/30 sticky left-0 z-10 backdrop-blur-sm">Año</th>
+                        <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-100/30 sticky left-[100px] z-10 backdrop-blur-sm">Mes</th>
+                        <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-widest border-r border-slate-100 text-center">Cuentas</th>
+                        {[1,2,3,4,5,6].map(m => (
+                          <th key={m} className="p-5 text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">MES {m}</th>
+                        ))}
+                        <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 text-center border-l border-slate-100 italic">Pend.</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dbStats.cohortHistory.map((c: any, ridx: number) => {
+                        const [y, m] = c.month.split("-");
+                        const monthLabels: Record<string, string> = {
+                          "01": "ENERO", "02": "FEBRERO", "03": "MARZO", "04": "ABRIL", "05": "MAYO", "06": "JUNIO",
+                          "07": "JULIO", "08": "AGOSTO", "09": "SEPTIEMBRE", "10": "OCTUBRE", "11": "NOVIEMBRE", "12": "DICIEMBRE"
+                        };
+                        
+                        const recoveries = c.recoveriesByMonth as Record<string, number>;
+                        const totalRecaudado = c.totalCollected;
+                        const pendingAmount = Math.max(0, c.meta - totalRecaudado);
+
+                        return (
+                          <tr key={ridx} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors group">
+                            <td className="p-5 text-[11px] font-black text-slate-400 group-hover:text-slate-600 sticky left-0 bg-white z-10 group-hover:bg-slate-50 transition-colors">{y}</td>
+                            <td className="p-5 text-[11px] font-black text-slate-800 sticky left-[100px] bg-white z-10 group-hover:bg-slate-50 transition-colors">{monthLabels[m]}</td>
+                            <td className="p-5 text-[11px] font-bold text-slate-400 text-center border-r border-slate-50">{c.count}</td>
+                            
+                            {[0,1,2,3,4,5].map(offset => {
+                              // Calculate payment month key
+                              const d = new Date(parseInt(y), parseInt(m) - 1 + offset, 1);
+                              const pKey = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}`;
+                              const amount = recoveries[pKey] || 0;
+                              const p = c.meta > 0 ? (amount / c.meta) * 100 : 0;
+                              
+                              // Heatmap scale
+                              let heatColor = "";
+                              const isMoney = matrixMode === 'money';
+                              
+                              if (p > 30) heatColor = isMoney ? "bg-blue-600 text-white" : "bg-rose-600 text-white";
+                              else if (p > 15) heatColor = isMoney ? "bg-blue-400 text-white" : "bg-rose-400 text-white";
+                              else if (p > 5) heatColor = isMoney ? "bg-blue-100 text-blue-800" : "bg-rose-50 text-rose-800";
+                              else if (p > 0) heatColor = isMoney ? "bg-blue-50 text-blue-600" : "bg-rose-50/50 text-rose-600";
+                              else heatColor = "text-slate-200";
+
+                              return (
+                                <td key={offset} className={`p-4 text-[10px] font-black text-center transition-all ${heatColor} border border-white/40 shadow-sm`}>
+                                   {amount > 0 ? (
+                                      matrixMode === 'money' ? 
+                                        new Intl.NumberFormat('es-CO', { notation: 'compact' }).format(amount) : 
+                                        `${p.toFixed(1)}%`
+                                   ) : "-"}
+                                </td>
+                              );
+                            })}
+
+                            <td className="p-5 text-[10px] font-black text-center bg-slate-50/50 text-slate-300 italic border-l border-slate-100">
+                               {matrixMode === 'money' ? 
+                                 new Intl.NumberFormat('es-CO', { notation: 'compact' }).format(pendingAmount) : 
+                                 `${((pendingAmount / c.meta) * 100).toFixed(1)}%`}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )}
