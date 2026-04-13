@@ -21,7 +21,7 @@ export const getAdvisorStats = (records: MappedRecord[]): AdvisorStats[] => {
     const current = statsMap.get(name) || { name, count: 0, totalGenerated: 0 };
     
     current.count += 1;
-    current.totalGenerated += rec.granTotal || 0;
+    current.totalGenerated += rec.honorariosTotal || 0;
     
     statsMap.set(name, current);
   }
@@ -51,7 +51,7 @@ export const getMonthStats = (records: MappedRecord[]): MonthStats[] => {
     const current = statsMap.get(monthLabel) || { month: monthLabel, count: 0, totalGenerated: 0 };
     
     current.count += 1;
-    current.totalGenerated += rec.granTotal || 0;
+    current.totalGenerated += rec.honorariosTotal || 0;
     
     statsMap.set(monthLabel, current);
   }

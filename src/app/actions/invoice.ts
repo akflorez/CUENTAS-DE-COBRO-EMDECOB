@@ -208,7 +208,7 @@ export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | 
       // Trends by day created
       const dateKey = inv.createdAt.toISOString().split('T')[0];
       if (!dailyTrends[dateKey]) dailyTrends[dateKey] = { generated: 0, collected: 0 };
-      dailyTrends[dateKey].generated += inv.granTotal;
+      dailyTrends[dateKey].generated += inv.honorariosTotal;
 
       if (inv.status === 'PAGADA') {
         stats.totalPagado += inv.montoPagado || 0;
@@ -223,10 +223,10 @@ export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | 
           }
         }
       } else if (inv.status === 'ANULADA') {
-        stats.totalAnulado += inv.granTotal;
+        stats.totalAnulado += inv.honorariosTotal;
         stats.countAnulado++;
       } else {
-        stats.totalPendiente += inv.granTotal;
+        stats.totalPendiente += inv.honorariosTotal;
         stats.countPendiente++;
       }
     });

@@ -336,7 +336,7 @@ export default function DashboardIndex() {
               <Users className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Gestionado</p>
+              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Honorarios (Sesión)</p>
               <h3 className="text-xl sm:text-2xl lg:text-lg xl:text-xl font-bold text-slate-800">
                 {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(totalValue)}
               </h3>
@@ -373,7 +373,7 @@ export default function DashboardIndex() {
                 <tr>
                   <th className="px-6 py-4">Asesor</th>
                   <th className="px-6 py-4 text-center">Cant. de Cuentas</th>
-                  <th className="px-6 py-4 text-right">Valor Generado</th>
+                  <th className="px-6 py-4 text-right">Honorarios</th>
                   <th className="px-6 py-4 text-right">% del Total</th>
                 </tr>
               </thead>
@@ -430,7 +430,7 @@ export default function DashboardIndex() {
                 <tr>
                   <th className="px-6 py-4">Mes</th>
                   <th className="px-6 py-4 text-center">Cant. de Cuentas</th>
-                  <th className="px-6 py-4 text-right">Valor Proyectado</th>
+                  <th className="px-6 py-4 text-right">Honorarios Proyectados</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-sm">
