@@ -58,6 +58,7 @@ const parseNumber = (val: any): number => {
 };
 
 export function mapRawRecord(row: any) {
+  const fileRefDate = row._fileReferenceDate;
   return {
     nombre: findCol(row, "NOMBRE", "NOMBRE ", "DEUDOR"),
     cedula: findCol(row, "CEDULA", "CEDULA ", "NIT", "IDENTIFICACION"),
@@ -71,7 +72,7 @@ export function mapRawRecord(row: any) {
     total: parseNumber(findCol(row, "TOTAL", "TOTAL ", "VALOR TOTAL", "TOTAL A PAGAR")),
     fechaPago: findCol(row, "FECHA DE PAGO", "FECHA PAGO", "FECHA"),
     fechaIngreso: findCol(row, "FECHA INGRESO DINERO", "FECHA INGRESO DEL DINERO", "FECHA INGRESO"),
-    fechaElaboracion: findCol(row, "FECHA ELABORACION", "FECHA CREACION", "FECHA CUENTA DE COBRO", "FECHA DE CREACION", "FECHA DE ENVIO", "FECHA ENVIO"),
+    fechaElaboracion: findCol(row, "FECHA ELABORACION", "FECHA CREACION", "FECHA CUENTA DE COBRO", "FECHA DE CREACION", "FECHA DE ENVIO", "FECHA ENVIO") || fileRefDate,
     estadoCobro: findCol(row, "CUENTA DE COBRO", "CUENTA DE COBRO "),
     asesor: findCol(row, "ASESOR", "ASESOR ", "ASESORA"),
     originalRow: row

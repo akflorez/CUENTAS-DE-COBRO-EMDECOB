@@ -11,6 +11,7 @@ export type FileData = {
   fileName: string;
   data: BillingData[];
   headers: string[];
+  referenceDate?: Date;
 };
 
 export type AppContextType = {
@@ -38,8 +39,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [directoryData, setDirectoryData] = useState<any[]>([]);
   const [startingConsecutive, setStartingConsecutive] = useState<number>(1);
 
-  // Derivamos la data unificada de todos los archivos
-  const excelData = filesData.flatMap(file => file.data);
+  // Derivamos la data unificada e inyectamos la fecha de referencia si existe
+  const excelData = filesData.flatMap(file => 
+    file.data.map(row => ({ ...row, _fileReferenceDate: file.referenceDate }))
+  );
 
   const clearData = () => {
     setFilesData([]);

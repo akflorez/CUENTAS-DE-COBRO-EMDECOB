@@ -3,7 +3,7 @@
 import React, { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import * as XLSX from "xlsx";
-import { UploadCloud, FileSpreadsheet, ArrowRight, AlertCircle, X, PlusCircle, Settings, Play } from "lucide-react";
+import { UploadCloud, FileSpreadsheet, ArrowRight, AlertCircle, X, PlusCircle, Settings, Play, CalendarDays } from "lucide-react";
 import { useAppContext, FileData } from "@/context/AppContext";
 
 export default function UploadPage() {
@@ -13,6 +13,7 @@ export default function UploadPage() {
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [fileDate, setFileDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
   const processFile = (file: File) => {
     if (!file.name.match(/\.(xlsx|xls|csv)$/)) {
@@ -50,7 +51,8 @@ export default function UploadPage() {
         setFilesData(prev => [...prev, {
           fileName: file.name,
           data: jsonData as any[],
-          headers: columns
+          headers: columns,
+          referenceDate: fileDate ? new Date(fileDate) : undefined
         }]);
         
         setIsLoading(false);
@@ -150,6 +152,21 @@ export default function UploadPage() {
           </span>
         </div>
 
+        {filesData.length === 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 p-6 bg-amber-50 rounded-xl border border-amber-100 mb-8 animate-in fade-in zoom-in duration-500">
+            <div className="flex items-center gap-3">
+              <CalendarDays className="w-5 h-5 text-amber-600" />
+              <p className="text-sm font-medium text-amber-800">¿Cuándo se envió/elaboró este archivo?</p>
+            </div>
+            <input 
+              type="date" 
+              value={fileDate}
+              onChange={(e) => setFileDate(e.target.value)}
+              className="bg-white border border-amber-200 rounded-lg px-4 py-2 text-sm font-bold text-amber-900 focus:ring-2 focus:ring-amber-500 outline-none shadow-sm"
+            />
+          </div>
+        )}
+
         {error && (
           <div className="mb-6 border-l-4 border-red-500 bg-red-50 p-4 rounded-r-md">
             <div className="flex">
@@ -179,7 +196,9 @@ export default function UploadPage() {
                     <FileSpreadsheet className="w-5 h-5 text-green-600 mr-3 flex-shrink-0" />
                     <div className="truncate">
                       <p className="text-sm font-medium text-slate-700 truncate">{file.fileName}</p>
-                      <p className="text-xs text-slate-500">{file.data.length} registros</p>
+                      <p className="text-xs text-slate-500">
+                        {file.data.length} registros {file.referenceDate ? `• Ref: ${file.referenceDate.toLocaleDateString('es-CO')}` : ''}
+                      </p>
                     </div>
                   </div>
                   <button 
