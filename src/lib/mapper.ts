@@ -127,9 +127,10 @@ export function groupRecords(rawRows: any[], startingConsecutive: number = 1): M
       // granTotal = solo lo que se cobra: Honorarios + IVA
       existing.granTotal += item.honorarios + item.iva;
     } else {
-      // Determinamos el mes de gestión: prioridad columna archivo, luego selección manual, luego fecha de pago
-      let gMes: number = mapped.archivoGestionMes ? parseInt(String(mapped.archivoGestionMes)) : raw._fileGestionMonth;
-      let gAnio: number = mapped.archivoGestionAnio ? parseInt(String(mapped.archivoGestionAnio)) : raw._fileGestionYear;
+      // Determinamos el mes de gestión: PRIORIDAD ABSOLUTA a la selección manual del usuario al subir el archivo
+      // para cumplir con la petición de "seleccione marzo debe aparecer en la etiqueta".
+      let gMes: number = raw._fileGestionMonth || (mapped.archivoGestionMes ? parseInt(String(mapped.archivoGestionMes)) : null);
+      let gAnio: number = raw._fileGestionYear || (mapped.archivoGestionAnio ? parseInt(String(mapped.archivoGestionAnio)) : null);
       
       if (!gMes || !gAnio) {
         const dPago = parseExcelDate(mapped.fechaPago);

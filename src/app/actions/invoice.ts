@@ -261,8 +261,10 @@ export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | 
           elabMonths: {}
         };
       }
-      cohortMap[cohortKey].meta += inv.honorariosTotal;
-      cohortMap[cohortKey].count += 1;
+        if (inv.status !== 'ANULADA') {
+          cohortMap[cohortKey].meta += inv.honorariosTotal;
+          cohortMap[cohortKey].count += 1;
+        }
 
       // Track when these were sent (elaboration)
       const elabKey = `${elabDateObj.getFullYear()}-${(elabDateObj.getMonth() + 1).toString().padStart(2, '0')}`;
