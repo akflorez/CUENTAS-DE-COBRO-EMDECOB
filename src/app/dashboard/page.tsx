@@ -250,88 +250,32 @@ export default function DashboardIndex() {
               </div>
             </div>
 
-            {/* Gráfico de Tendencia Simple */}
-            {dbStats.trends && dbStats.trends.length > 0 && (
-              <div className="md:col-span-4 bg-white rounded-2xl shadow-sm border border-slate-100 p-8">
-                <div className="flex items-center justify-between mb-8">
+            {/* Panel Principal: GRÁFICO DE MESES DE GESTIÓN (LO QUE PIDIÓ LA USUARIA) */}
+            {dbStats.cohortHistory && (
+              <div className="md:col-span-4 bg-white rounded-3xl shadow-xl border border-slate-100 p-10 mt-6 overflow-hidden relative">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12 relative z-10">
                   <div>
-                    <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                       <BarChart3 className="w-5 h-5 text-emerald-500" />
-                       Actividad Diaria (Últimos 15 días)
+                    <h3 className="text-2xl font-black text-slate-800 flex items-center gap-3">
+                       <Zap className="w-6 h-6 text-amber-500 fill-amber-500" />
+                       Rendimiento Histórico por MES DE GESTIÓN
                     </h3>
-                    <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mt-1">G: Enviado (Día de Elaboración) | R: Recaudado (Entrada Banco)</p>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
-                       <div className="w-3 h-3 bg-slate-100 rounded-sm"></div>
-                       <span className="text-[10px] font-bold text-slate-500">GENERADO</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                       <div className="w-3 h-3 bg-emerald-500 rounded-sm"></div>
-                       <span className="text-[10px] font-bold text-slate-500">RECAUDADO</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-end justify-between h-48 gap-2 px-2 border-b border-slate-100">
-                   {dbStats.trends.map((t: any, idx: number) => {
-                     const maxVal = Math.max(...dbStats.trends.map((x: any) => x.generated), 1);
-                     const genHeight = (t.generated / maxVal) * 100;
-                     const collHeight = (t.collected / maxVal) * 100;
-                     
-                     return (
-                       <div key={idx} className="flex-1 flex flex-col justify-end items-center group relative cursor-default h-full">
-                          {/* Tooltip */}
-                          <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 shadow-xl pointer-events-none font-bold">
-                             {new Date(t.date).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}<br/>
-                             G: {new Intl.NumberFormat('es-CO').format(t.generated)}<br/>
-                             R: {new Intl.NumberFormat('es-CO').format(t.collected)}
-                          </div>
-                          
-                          <div className="w-full max-w-[20px] flex items-end gap-[2px] h-full justify-center">
-                             <div 
-                               className="w-full bg-slate-100 rounded-t-sm transition-all duration-500 group-hover:bg-slate-200" 
-                               style={{ height: `${genHeight}%` }}
-                             ></div>
-                             <div 
-                               className="w-full bg-emerald-500 rounded-t-sm transition-all duration-500 shadow-[0_-4px_10px_rgba(16,185,129,0.2)] group-hover:bg-emerald-600" 
-                               style={{ height: `${collHeight}%` }}
-                             ></div>
-                          </div>
-                          <div className="mt-2 text-[9px] font-bold text-slate-400 rotate-45 origin-left whitespace-nowrap hidden md:block">
-                            {new Date(t.date).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}
-                          </div>
-                       </div>
-                     )
-                   })}
-                </div>
-              </div>
-            )}
-
-            {/* Nuevo Dashboard de Cohortes de Gestión */}
-            {dbStats.cohortHistory && dbStats.cohortHistory.length > 0 && (
-              <div className="md:col-span-4 bg-white rounded-2xl shadow-sm border border-slate-100 p-8">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10">
-                  <div>
-                    <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
-                       <Zap className="w-5 h-5 text-amber-500 fill-amber-500" />
-                       Rendimiento por Gestión (Cosechas)
-                    </h3>
-                    <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest mt-1">Comparativa de Honorarios vs Recaudos por Mes de Gestión</p>
+                    <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-2 bg-slate-50 inline-block px-3 py-1 rounded-full border border-slate-100 italic">
+                      Vista enfocada en Eficacia Mensual • Análisis de Cosecha
+                    </p>
                   </div>
                   
-                  <div className="flex flex-wrap items-center gap-4 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                  <div className="flex flex-wrap items-center gap-5 bg-slate-50/80 p-4 rounded-2xl border border-slate-100 backdrop-blur-sm">
                     <div className="flex items-center gap-2">
-                       <div className="w-3 h-3 bg-blue-900 rounded-full"></div>
-                       <span className="text-[10px] font-black text-slate-500 uppercase">En Ciclo</span>
+                       <div className="w-3 h-3 bg-blue-900 rounded-full shadow-sm"></div>
+                       <span className="text-[10px] font-black text-slate-600 uppercase">Mismo Mes</span>
                     </div>
                     <div className="flex items-center gap-2">
-                       <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                       <span className="text-[10px] font-black text-slate-500 uppercase">Recuperado</span>
+                       <div className="w-3 h-3 bg-blue-500 rounded-full shadow-sm"></div>
+                       <span className="text-[10px] font-black text-slate-600 uppercase">Recup. Posterior</span>
                     </div>
                     <div className="flex items-center gap-2">
-                       <div className="w-3 h-3 bg-slate-200 rounded-full"></div>
-                       <span className="text-[10px] font-black text-slate-500 uppercase">Pendiente</span>
+                       <div className="w-3 h-3 bg-slate-200 rounded-full shadow-sm"></div>
+                       <span className="text-[10px] font-black text-slate-600 uppercase">Pendiente</span>
                     </div>
                     <div className="h-4 w-px bg-slate-200 mx-2"></div>
                     <div className="flex items-center gap-2">
@@ -341,22 +285,26 @@ export default function DashboardIndex() {
                   </div>
                 </div>
 
-                <div className="relative h-[350px] mt-16 px-4">
-                  {/* Grid Lines */}
+                <div className="relative h-[450px] mt-20 px-6">
+                  {/* Grid Lines con Labels de Meta */}
                   {[0, 25, 50, 75, 100].map(p => (
                     <div key={p} className="absolute w-full border-t border-slate-50 flex items-center" style={{ bottom: `${p}%` }}>
-                       <span className="absolute -left-8 text-[9px] font-black text-slate-300">{p}%</span>
+                       <span className="absolute -left-10 text-[10px] font-black text-slate-300">{p}%</span>
                     </div>
                   ))}
 
-                  <div className="absolute inset-0 flex items-end justify-between gap-10">
-                    {dbStats.cohortHistory.map((c: any, idx: number) => {
-                      const totalRecaudado = c.totalCollected; // meta - c.pending theoretically
+                  <div className="absolute inset-0 flex items-end justify-between gap-12 pt-10">
+                    {dbStats.cohortHistory.length === 0 ? (
+                       <div className="w-full h-full flex items-center justify-center text-slate-300 font-black uppercase tracking-widest text-sm">
+                          No hay suficientes datos de meses de gestión
+                       </div>
+                    ) : dbStats.cohortHistory.map((c: any, idx: number) => {
+                      const totalRecaudado = c.totalCollected;
                       const efficacy = c.meta > 0 ? Math.round((totalRecaudado / c.meta) * 100) : 0;
                       
                       const monthLabels: Record<string, string> = {
-                        "01": "ENE", "02": "FEB", "03": "MAR", "04": "ABR", "05": "MAY", "06": "JUN",
-                        "07": "JUL", "08": "AGO", "09": "SEP", "10": "OCT", "11": "NOV", "12": "DIC"
+                        "01": "ENERO", "02": "FEBRERO", "03": "MARZO", "04": "ABRIL", "05": "MAYO", "06": "JUNIO",
+                        "07": "JULIO", "08": "AGOSTO", "09": "SEPTIEMBRE", "10": "OCTUBRE", "11": "NOVIEMBRE", "12": "DICIEMBRE"
                       };
                       const [y, m] = c.month.split("-");
                       const displayMonth = monthLabels[m];
@@ -368,156 +316,93 @@ export default function DashboardIndex() {
                       const pendingAmount = Math.max(0, c.meta - totalRecaudado);
                       const pendingP = (pendingAmount / c.meta) * 100;
 
-                      // Color Palette for aging segments (Deep blue to teal)
                       const segmentColors = [
-                        "bg-blue-900", // Mismo mes
-                        "bg-blue-600",
-                        "bg-blue-400",
-                        "bg-cyan-500",
-                        "bg-cyan-400",
-                        "bg-teal-400",
+                        "bg-blue-900", "bg-blue-600", "bg-blue-400", "bg-cyan-500", "bg-cyan-400", "bg-teal-400"
                       ];
 
                       return (
                         <div key={idx} className="flex-1 flex flex-col justify-end items-center group relative h-full">
-                           {/* Efficiency % Line Marker */}
+                           {/* Line Marker Eficacia */}
                            <div 
-                             className="absolute left-1/2 -translate-x-1/2 w-4 h-4 bg-white border-4 border-emerald-500 rounded-full z-10 transition-all group-hover:scale-125"
-                             style={{ bottom: `${efficacy}%`, marginBottom: '-8px' }}
+                             className="absolute left-1/2 -translate-x-1/2 w-6 h-6 bg-white border-[6px] border-emerald-500 rounded-full z-20 shadow-lg transition-all group-hover:scale-125"
+                             style={{ bottom: `${efficacy}%`, marginBottom: '-12px' }}
                            >
-                             <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-emerald-600 text-white text-[10px] font-black px-2 py-1 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
-                               {efficacy}% RECAUDADO
-                             </div>
+                              <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-emerald-600 text-white text-[11px] font-black px-3 py-1.5 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all z-50 scale-75 group-hover:scale-100">
+                                {efficacy}% ÉXITO
+                              </div>
                            </div>
 
-                           {/* Stacked Bar with Multiple Recovery Segments */}
-                           <div className="w-full max-w-[90px] h-full flex flex-col-reverse rounded-xl overflow-hidden shadow-sm border border-slate-50 transition-all group-hover:shadow-md">
-                              {/* Recovery Segments */}
+                           {/* La Gran Barra Stacked */}
+                           <div className="w-full max-w-[110px] h-full flex flex-col-reverse rounded-3xl overflow-hidden shadow-2xl border border-white transition-all group-hover:shadow-blue-100 group-hover:-translate-y-2 duration-500 bg-slate-50">
                               {recoveryEntries.map(([rMonth, amount], sIdx) => {
                                 const p = (amount / c.meta) * 100;
-                                if (p < 0.5) return null; // Skip tiny segments
+                                if (p < 0.1) return null;
                                 
                                 const colorClass = segmentColors[Math.min(sIdx, segmentColors.length - 1)];
                                 const [ry, rm] = rMonth.split("-");
-                                const rMonthShort = monthLabels[rm];
+                                const rMonthShort = monthLabels[rm]?.slice(0,3);
 
                                 return (
                                   <div 
                                     key={rMonth} 
-                                    className={`${colorClass} flex items-center justify-center relative transition-all duration-700 hover:brightness-110 group/segment`} 
+                                    className={`${colorClass} flex items-center justify-center relative transition-all duration-1000 group/segment hover:brightness-110`} 
                                     style={{ height: `${p}%` }}
                                   >
-                                    {p > 10 && (
-                                       <div className="flex flex-col items-center pointer-events-none">
-                                          <span className="text-[9px] text-white font-black leading-none">{Math.round(p)}%</span>
-                                          <span className="text-[7px] text-white/60 font-medium uppercase">{rMonthShort}</span>
+                                    {p > 8 && (
+                                       <div className="flex flex-col items-center pointer-events-none drop-shadow-md">
+                                          <span className="text-[12px] text-white font-black">{Math.round(p)}%</span>
+                                          <span className="text-[8px] text-white/50 font-bold uppercase tracking-tighter">{rMonthShort}</span>
                                        </div>
                                     )}
                                   </div>
                                 );
                               })}
 
-                              {/* Top: Pending */}
-                              <div 
-                                className="bg-slate-100 flex items-center justify-center relative transition-all duration-700" 
-                                style={{ height: `${pendingP}%` }}
-                              >
-                                {pendingP > 15 && <span className="text-[9px] text-slate-400 font-extrabold rotate-90">{Math.round(pendingP)}% <span className="text-[7px]">PEND</span></span>}
+                              {/* Sección Pendiente */}
+                              <div className="bg-slate-100 flex items-center justify-center relative transition-all duration-1000" style={{ height: `${pendingP}%` }}>
+                                {pendingP > 15 && <span className="text-[10px] text-slate-300 font-black rotate-90 tracking-widest">{Math.round(pendingP)}% PEND</span>}
                               </div>
 
-                              {/* Valor total arriba de la barra */}
-                              <div className="absolute -top-14 w-full text-center">
-                                <p className="text-[14px] font-black text-slate-800 leading-tight">
+                              {/* Valor Meta Arriba */}
+                              <div className="absolute -top-16 w-full text-center">
+                                <p className="text-[16px] font-black text-slate-800 tracking-tighter drop-shadow-sm">
                                   {new Intl.NumberFormat('es-CO', { notation: 'compact' }).format(c.meta)}
                                 </p>
-                                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">TOTAL HONORARIOS</p>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">HONORARIOS</p>
                               </div>
                            </div>
 
-                           {/* Month Label */}
-                           <div className="mt-10 text-center">
-                              <p className="text-[11px] font-black text-slate-700 tracking-tight">{displayMonth}</p>
-                              <p className="text-[9px] font-bold text-slate-300">{y}</p>
+                           {/* Month Label Base */}
+                           <div className="mt-12 text-center group-hover:scale-110 transition-transform">
+                              <p className="text-[12px] font-black text-slate-800 tracking-tight">{displayMonth}</p>
+                              <p className="text-[10px] font-bold text-slate-300">{y}</p>
                            </div>
                            
-                           {/* Hover Info Panel (VINTAGE BREAKDOWN) */}
-                           <div className="absolute -top-32 left-1/2 -translate-x-1/2 bg-white p-5 rounded-2xl shadow-2xl border border-slate-100 opacity-0 group-hover:opacity-100 transition-all z-40 pointer-events-none scale-90 group-hover:scale-100 min-w-[240px]">
-                              <div className="flex items-center gap-2 mb-4 border-b pb-2">
-                                <Calendar className="w-3 h-3 text-slate-400" />
-                                <p className="text-[10px] font-black text-slate-800 uppercase tracking-tighter">Cronología de Recaudo {displayMonth}</p>
+                           {/* VINTAGE TOOLTIP */}
+                           <div className="absolute -top-40 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-md p-6 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-slate-100 opacity-0 group-hover:opacity-100 transition-all z-50 pointer-events-none scale-50 group-hover:scale-100 min-w-[280px]">
+                              <div className="flex items-center gap-3 mb-5 border-b border-slate-100 pb-3">
+                                <Calendar className="w-5 h-5 text-blue-500" />
+                                <p className="text-[13px] font-black text-slate-800 uppercase tracking-tighter">Recaudo: Gestión {displayMonth}</p>
                               </div>
-                              
-                              <div className="space-y-3">
-                                <div className="flex justify-between items-center text-[10px] bg-slate-50 p-2 rounded-lg">
-                                  <span className="font-bold text-slate-500 uppercase">Meta Total:</span>
-                                  <span className="font-black text-slate-800">{new Intl.NumberFormat('es-CO').format(c.meta)}</span>
-                                </div>
-
-                                <div className="space-y-1 mt-3 px-1">
-                                  <p className="text-[9px] font-black text-slate-400 uppercase mb-2">Entradas por Mes:</p>
-                                  {Object.entries(c.recoveriesByMonth as Record<string, number>)
-                                    .sort((a, b) => a[0].localeCompare(b[0]))
-                                    .map(([pMonth, amount]) => {
-                                      const [py, pm] = pMonth.split("-");
-                                      const pMonthName = monthLabels[pm] || pm;
-                                      return (
-                                        <div key={pMonth} className="flex justify-between items-center group/item border-l-2 border-blue-100 pl-2">
-                                          <span className="text-[9px] font-bold text-slate-500">{pMonthName} {py}:</span>
-                                          <span className="text-[10px] font-black text-blue-900">{new Intl.NumberFormat('es-CO').format(amount)}</span>
-                                        </div>
-                                      );
-                                    })}
-                                </div>
-
-                                <div className="flex justify-between items-center text-slate-400 border-t pt-2 px-1">
-                                  <span className="text-[10px] font-bold">Saldo Pendiente:</span>
-                                  <span className="text-[10px] font-black text-rose-500">{new Intl.NumberFormat('es-CO').format(c.meta - totalRecaudado)}</span>
+                              <div className="space-y-4">
+                                {Object.entries(c.recoveriesByMonth as Record<string, number>)
+                                  .sort((a,b) => a[0].localeCompare(b[0]))
+                                  .map(([m, am]) => (
+                                    <div key={m} className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border-l-4 border-blue-500">
+                                       <span className="text-[11px] font-bold text-slate-500 uppercase">{monthLabels[m.split("-")[1]]}:</span>
+                                       <span className="text-[12px] font-black text-blue-900">{new Intl.NumberFormat('es-CO').format(am)}</span>
+                                    </div>
+                                  ))}
+                                <div className="flex justify-between items-center border-t border-slate-100 pt-4 px-2">
+                                   <span className="text-[11px] font-black text-slate-400 uppercase">Sin recaudar:</span>
+                                   <span className="text-[13px] font-black text-rose-500">{new Intl.NumberFormat('es-CO').format(c.meta - totalRecaudado)}</span>
                                 </div>
                               </div>
-                              
-                              {/* Decorator Arrow */}
-                              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white border-b border-r border-slate-100 rotate-45"></div>
                            </div>
                         </div>
                       );
                     })}
                   </div>
-                </div>
-              </div>
-            )}
-
-            {/* Gráfico de Actividad Diaria Re-integrado */}
-            {dbStats.trends && dbStats.trends.length > 0 && (
-              <div className="md:col-span-4 bg-slate-50/50 rounded-2xl border border-slate-100 p-8">
-                <div className="flex items-center justify-between mb-8">
-                  <div>
-                    <h3 className="text-md font-bold text-slate-700 flex items-center gap-2">
-                       <BarChart3 className="w-5 h-5 text-slate-400" />
-                       Monitor de Flujo Diario (Realización)
-                    </h3>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1">Cuentas enviadas vs Recaudos que entraron al banco el mismo día</p>
-                  </div>
-                </div>
-
-                <div className="flex items-end justify-between h-32 gap-2 px-2 border-b border-slate-200/50">
-                   {dbStats.trends.map((t: any, idx: number) => {
-                     const maxVal = Math.max(...dbStats.trends.map((x: any) => x.generated), 1);
-                     const genHeight = (t.generated / maxVal) * 100;
-                     const collHeight = (t.collected / maxVal) * 100;
-                     
-                     return (
-                       <div key={idx} className="flex-1 flex flex-col justify-end items-center group relative cursor-default h-full">
-                          <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[9px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 shadow-xl pointer-events-none font-bold">
-                             {new Date(t.date).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}: R ${new Intl.NumberFormat('es-CO', { notation: 'compact' }).format(t.collected)}
-                          </div>
-                          
-                          <div className="w-full max-w-[12px] flex items-end gap-[1px] h-full justify-center">
-                             <div className="w-full bg-slate-200 rounded-t-sm" style={{ height: `${genHeight}%` }}></div>
-                             <div className="w-full bg-emerald-400 rounded-t-sm" style={{ height: `${collHeight}%` }}></div>
-                          </div>
-                       </div>
-                     )
-                   })}
                 </div>
               </div>
             )}

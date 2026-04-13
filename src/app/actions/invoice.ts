@@ -243,43 +243,44 @@ export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | 
       // Global snapshot filters
       const isInRange = (!startDate || elabDateObj >= new Date(startDate)) && (!endDate || elabDateObj <= new Date(endDate));
 
-      // 1. Cohort Tracking (By Gestión)
-      if (inv.gestionMes && inv.gestionAnio) {
-        const cohortKey = `${inv.gestionAnio}-${inv.gestionMes.toString().padStart(2, '0')}`;
-        if (!cohortMap[cohortKey]) {
-          cohortMap[cohortKey] = { 
-            month: cohortKey, 
-            meta: 0, 
-            collectedSameMonth: 0, 
-            collectedLater: 0, 
-            totalCollected: 0, 
-            count: 0,
-            recoveriesByMonth: {} 
-          };
-        }
-        cohortMap[cohortKey].meta += inv.honorariosTotal;
-        cohortMap[cohortKey].count += 1;
+      // 1. Monthly Cohort Tracking (Smart Fallback)
+      const gMes = inv.gestionMes || (elabDateObj.getMonth() + 1);
+      const gAnio = inv.gestionAnio || elabDateObj.getFullYear();
+      const cohortKey = `${gAnio}-${gMes.toString().padStart(2, '0')}`;
 
-        if ((inv.status === 'PAGADA' || (inv.montoPagado && inv.montoPagado > 0)) && inv.fechaPago) {
-          const pDate = new Date(inv.fechaPago);
-          
-          // Vintage Tracking (Exactly when was this specific cohort paid?)
-          const pMonthKey = `${pDate.getFullYear()}-${(pDate.getMonth() + 1).toString().padStart(2, '0')}`;
-          if (!cohortMap[cohortKey].recoveriesByMonth[pMonthKey]) {
-            cohortMap[cohortKey].recoveriesByMonth[pMonthKey] = 0;
-          }
-          cohortMap[cohortKey].recoveriesByMonth[pMonthKey] += inv.montoPagado || 0;
+      if (!cohortMap[cohortKey]) {
+        cohortMap[cohortKey] = { 
+          month: cohortKey, 
+          meta: 0, 
+          collectedSameMonth: 0, 
+          collectedLater: 0, 
+          totalCollected: 0, 
+          count: 0,
+          recoveriesByMonth: {} 
+        };
+      }
+      cohortMap[cohortKey].meta += inv.honorariosTotal;
+      cohortMap[cohortKey].count += 1;
 
-          // Check if paid in the same management month or later
-          const isSameMonth = pDate.getFullYear() === inv.gestionAnio && (pDate.getMonth() + 1) === inv.gestionMes;
-          
-          if (isSameMonth) {
-            cohortMap[cohortKey].collectedSameMonth += inv.montoPagado || 0;
-          } else {
-            cohortMap[cohortKey].collectedLater += inv.montoPagado || 0;
-          }
-          cohortMap[cohortKey].totalCollected += inv.montoPagado || 0;
+      if ((inv.status === 'PAGADA' || (inv.montoPagado && inv.montoPagado > 0)) && inv.fechaPago) {
+        const pDate = new Date(inv.fechaPago);
+        
+        // Vintage Tracking (Exactly when was this specific cohort paid?)
+        const pMonthKey = `${pDate.getFullYear()}-${(pDate.getMonth() + 1).toString().padStart(2, '0')}`;
+        if (!cohortMap[cohortKey].recoveriesByMonth[pMonthKey]) {
+          cohortMap[cohortKey].recoveriesByMonth[pMonthKey] = 0;
         }
+        cohortMap[cohortKey].recoveriesByMonth[pMonthKey] += inv.montoPagado || 0;
+
+        // Check if paid in the same management month or later
+        const isSameMonth = pDate.getFullYear() === gAnio && (pDate.getMonth() + 1) === gMes;
+        
+        if (isSameMonth) {
+          cohortMap[cohortKey].collectedSameMonth += inv.montoPagado || 0;
+        } else {
+          cohortMap[cohortKey].collectedLater += inv.montoPagado || 0;
+        }
+        cohortMap[cohortKey].totalCollected += inv.montoPagado || 0;
       }
 
       // 2. Dashboard Snapshot Cards
