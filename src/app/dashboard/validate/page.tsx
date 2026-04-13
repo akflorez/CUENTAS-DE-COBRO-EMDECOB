@@ -71,11 +71,12 @@ export default function ValidatePage() {
     try {
       for (const record of validOnes) {
         const res = await saveInvoiceRecord(record.mapped);
-        if (res.success) {
+        if (res && res.success) {
           successCount++;
-        } else if (res.error === 'Invoice already exists') {
+        } else if (res && res.error === 'Invoice already exists') {
           skipCount++;
         } else {
+          console.error("Save error for record:", record.mapped.consecutivo, res?.error);
           errorCount++;
         }
       }

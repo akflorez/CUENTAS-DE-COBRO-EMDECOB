@@ -1,3 +1,5 @@
+import { parseExcelDate } from "./utils";
+
 export type ValidationResult = {
   isValid: boolean;
   errors: string[];
@@ -121,7 +123,6 @@ export function groupRecords(rawRows: any[], startingConsecutive: number = 1): M
       let gMes: number | undefined;
       let gAnio: number | undefined;
       
-      const { parseExcelDate } = require('./utils');
       const dPago = parseExcelDate(mapped.fechaPago);
       if (dPago) {
         gMes = dPago.getMonth() + 1;

@@ -5,6 +5,7 @@ import { MappedRecord } from '@/lib/mapper'
 import { revalidatePath } from 'next/cache'
 
 export async function saveInvoiceRecord(data: MappedRecord) {
+  console.log('--- saveInvoiceRecord called for:', data.consecutivo, '---');
   try {
     const prisma = getPrisma();
     
