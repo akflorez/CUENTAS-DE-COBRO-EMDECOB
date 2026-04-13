@@ -7,7 +7,7 @@
     "build": "next build",
     "db:generate": "prisma generate",
     "db:sync": "prisma db push --accept-data-loss",
-    "start": "next start",
+    "start": "prisma db push --accept-data-loss || echo 'DB sync failed, continuing...' && next start",
     "lint": "eslint"
   },
   "dependencies": {
