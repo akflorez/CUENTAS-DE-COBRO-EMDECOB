@@ -7,8 +7,8 @@ async function checkDatabase() {
   try {
     const prisma = getPrisma();
     const start = Date.now();
-    await prisma.$queryRaw`SELECT 1`;
-    return { success: true, time: Date.now() - start };
+    const count = await prisma.invoice.count();
+    return { success: true, time: Date.now() - start, count };
   } catch (err: any) {
     return { success: false, error: err.message || 'Error desconocido' };
   }
@@ -38,7 +38,7 @@ export default async function DebugPage() {
               <CheckCircle2 />
               <div>
                 <p className="font-bold">Conexión Exitosa</p>
-                <p className="text-sm">Ping: {dbStatus.time}ms</p>
+                <p className="text-sm">Ping: {dbStatus.time}ms | Registros en BD: {dbStatus.count}</p>
               </div>
             </div>
           ) : (
