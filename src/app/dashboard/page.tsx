@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAppContext } from "@/context/AppContext";
 import { getAdvisorStats, getMonthStats, getDateRangeStats } from "@/lib/stats";
 import { groupRecords } from "@/lib/mapper";
-import { Users, FileSpreadsheet, Building2, ExternalLink, CalendarDays, Clock, CheckCircle2, AlertCircle, Scale } from "lucide-react";
+import { Users, FileSpreadsheet, Building2, ExternalLink, CalendarDays, Clock, CheckCircle2, AlertCircle, Scale, Zap } from "lucide-react";
 import Link from "next/link";
 import { getInvoiceStats, getConjuntos } from "@/app/actions/invoice";
 import { TrendingUp, BarChart3, Timer, X } from "lucide-react";
@@ -175,6 +175,18 @@ export default function DashboardIndex() {
         
         {dbStats ? (
           <div className={`grid grid-cols-1 md:grid-cols-4 gap-6 transition-opacity duration-300 ${loadingStats ? 'opacity-50' : 'opacity-100'}`}>
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex items-center group hover:border-slate-800 transition-all border-b-4 border-b-slate-800">
+              <div className="p-4 bg-slate-50 text-slate-800 rounded-2xl mr-5 group-hover:scale-110 transition-transform">
+                <Scale className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Facturado (Meta)</p>
+                <h3 className="text-xl font-black text-slate-800">
+                  {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(dbStats.totalMetaHonorarios)}
+                </h3>
+              </div>
+            </div>
+
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex items-center group hover:border-amber-200 transition-all">
               <div className="p-4 bg-amber-50 text-amber-600 rounded-2xl mr-5 group-hover:scale-110 transition-transform">
                 <Clock className="w-6 h-6" />
@@ -207,18 +219,6 @@ export default function DashboardIndex() {
                 <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">Días de Pago (Demora)</p>
                 <h3 className="text-xl font-black text-blue-600">
                   {dbStats.avgPaymentDays || 0} <span className="text-xs font-bold text-slate-400 font-normal">días prom.</span>
-                </h3>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex items-center group hover:border-purple-200 transition-all">
-              <div className="p-4 bg-purple-50 text-purple-600 rounded-2xl mr-5 group-hover:scale-110 transition-transform">
-                <Timer className="w-6 h-6" />
-              </div>
-              <div>
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">CUMPLIMIENTO (DÍA 10)</p>
-                <h3 className="text-xl font-black text-purple-600">
-                  {dbStats.complianceRate || 0}% <span className="text-xs font-bold text-slate-400 font-normal">a tiempo</span>
                 </h3>
               </div>
             </div>
@@ -293,89 +293,141 @@ export default function DashboardIndex() {
               </div>
             )}
 
-            {/* Nuevo Gráfico: Historial Mensual */}
-            {dbStats.monthlyHistory && dbStats.monthlyHistory.length > 0 && (
-              <div className="md:col-span-4 bg-white rounded-2xl shadow-sm border border-slate-100 p-8 space-y-12">
-                {/* 1. Gráfico de Dinero con Porcentajes */}
-                <div>
-                  <div className="flex items-center justify-between mb-8">
-                    <div>
-                      <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                        <Scale className="w-5 h-5 text-indigo-500" />
-                        Historial de Flujo Mensual (Generado vs Recaudado)
-                      </h3>
-                      <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mt-1">Comparativa de Honorarios Enviados vs Recaudos Totales por Mes</p>
+            {/* Nuevo Dashboard de Cohortes de Gestión */}
+            {dbStats.cohortHistory && dbStats.cohortHistory.length > 0 && (
+              <div className="md:col-span-4 bg-white rounded-2xl shadow-sm border border-slate-100 p-8">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10">
+                  <div>
+                    <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
+                       <Zap className="w-5 h-5 text-amber-500 fill-amber-500" />
+                       Análisis de Rendimiento por Ciclo (Cohortes)
+                    </h3>
+                    <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest mt-1">Comparativa de Meta vs Recaudo Realizado para cada Mes de Gestión</p>
+                  </div>
+                  
+                  <div className="flex flex-wrap items-center gap-4 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                    <div className="flex items-center gap-2">
+                       <div className="w-3 h-3 bg-blue-900 rounded-full"></div>
+                       <span className="text-[10px] font-black text-slate-500 uppercase">En Ciclo</span>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 bg-indigo-100 rounded-sm"></div>
-                        <span className="text-[10px] font-bold text-slate-500">GENERADO</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 bg-emerald-500 rounded-sm"></div>
-                        <span className="text-[10px] font-bold text-slate-500">RECAUDADO</span>
-                      </div>
+                    <div className="flex items-center gap-2">
+                       <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                       <span className="text-[10px] font-black text-slate-500 uppercase">Recuperado</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                       <div className="w-3 h-3 bg-slate-200 rounded-full"></div>
+                       <span className="text-[10px] font-black text-slate-500 uppercase">Pendiente</span>
+                    </div>
+                    <div className="h-4 w-px bg-slate-200 mx-2"></div>
+                    <div className="flex items-center gap-2">
+                       <div className="w-3 h-3 border-2 border-emerald-500 rounded-full"></div>
+                       <span className="text-[10px] font-black text-emerald-600 uppercase">Eficacia %</span>
                     </div>
                   </div>
+                </div>
 
-                  <div className="flex items-end justify-between h-56 gap-8 px-4 border-b border-slate-100 pb-2">
-                    {dbStats.monthlyHistory.map((m: any, idx: number) => {
-                      const maxVal = Math.max(...dbStats.monthlyHistory.map((x: any) => Math.max(x.generated, x.collected)), 1);
-                      const genHeight = (m.generated / maxVal) * 100;
-                      const collHeight = (m.collected / maxVal) * 100;
-                      const percentage = m.generated > 0 ? Math.round((m.collected / m.generated) * 100) : 0;
+                <div className="relative h-[350px] mt-16 px-4">
+                  {/* Grid Lines */}
+                  {[0, 25, 50, 75, 100].map(p => (
+                    <div key={p} className="absolute w-full border-t border-slate-50 flex items-center" style={{ bottom: `${p}%` }}>
+                       <span className="absolute -left-8 text-[9px] font-black text-slate-300">{p}%</span>
+                    </div>
+                  ))}
+
+                  <div className="absolute inset-0 flex items-end justify-between gap-10">
+                    {dbStats.cohortHistory.map((c: any, idx: number) => {
+                      const totalRecaudado = c.collectedSameMonth + c.collectedLater;
+                      const efficacy = c.meta > 0 ? Math.round((totalRecaudado / c.meta) * 100) : 0;
                       
-                      const monthNames: Record<string, string> = {
-                        "01": "Ene", "02": "Feb", "03": "Mar", "04": "Abr", "05": "May", "06": "Jun",
-                        "07": "Jul", "08": "Ago", "09": "Sep", "10": "Oct", "11": "Nov", "12": "Dic"
+                      // Percentages for the stacked bar
+                      const sameP = (c.collectedSameMonth / c.meta) * 100;
+                      const laterP = (c.collectedLater / c.meta) * 100;
+                      const pendingP = 100 - (sameP + laterP);
+
+                      const monthLabels: Record<string, string> = {
+                        "01": "ENERO", "02": "FEBRERO", "03": "MARZO", "04": "ABRIL", "05": "MAYO", "06": "JUNIO",
+                        "07": "JULIO", "08": "AGOSTO", "09": "SEPTIEMBRE", "10": "OCTUBRE", "11": "NOVIEMBRE", "12": "DICIEMBRE"
                       };
-                      const [y, mm] = m.month.split("-");
-                      const label = `${monthNames[mm]} ${y}`;
+                      const [y, m] = c.month.split("-");
+                      const displayMonth = monthLabels[m];
 
                       return (
                         <div key={idx} className="flex-1 flex flex-col justify-end items-center group relative h-full">
-                           {/* Label de Porcentaje arriba de las barras */}
-                           <div className={`mb-2 text-[10px] font-black ${percentage >= 80 ? 'text-emerald-600' : 'text-slate-400'}`}>
-                              {percentage}%
+                           {/* Efficiency % Line Marker */}
+                           <div 
+                             className="absolute left-1/2 -translate-x-1/2 w-4 h-4 bg-white border-4 border-emerald-500 rounded-full z-10 transition-all group-hover:scale-125"
+                             style={{ bottom: `${efficacy}%`, marginBottom: '-8px' }}
+                           >
+                             <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-emerald-600 text-white text-[10px] font-black px-2 py-0.5 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                               {efficacy}% Eficacia
+                             </div>
+                           </div>
+
+                           {/* Stacked Bar */}
+                           <div className="w-full max-w-[80px] h-full flex flex-col-reverse rounded-xl overflow-hidden shadow-sm border border-slate-50 transition-transform group-hover:-translate-y-1">
+                              {/* Bottom: Same Month */}
+                              <div 
+                                className="bg-blue-900 flex items-center justify-center relative transition-all duration-700" 
+                                style={{ height: `${sameP}%` }}
+                              >
+                                {sameP > 15 && <span className="text-[9px] text-white/50 font-black rotate-90">{Math.round(sameP)}%</span>}
+                              </div>
+                              {/* Middle: Later Month */}
+                              <div 
+                                className="bg-blue-500 flex items-center justify-center relative transition-all duration-700" 
+                                style={{ height: `${laterP}%` }}
+                              >
+                                {laterP > 15 && <span className="text-[9px] text-white/80 font-black rotate-90">{Math.round(laterP)}%</span>}
+                              </div>
+                              {/* Top: Pending */}
+                              <div 
+                                className="bg-slate-100 flex items-center justify-center relative transition-all duration-700" 
+                                style={{ height: `${pendingP}%` }}
+                              >
+                                {pendingP > 15 && <span className="text-[9px] text-slate-400 font-black rotate-90">{Math.round(pendingP)}%</span>}
+                              </div>
+
+                              {/* Label flotante arriba del todo con la Meta */}
+                              <div className="absolute -top-12 w-full text-center">
+                                <p className="text-[12px] font-black text-slate-800">
+                                  {new Intl.NumberFormat('es-CO', { notation: 'compact' }).format(c.meta)}
+                                </p>
+                                <p className="text-[8px] font-bold text-slate-400 uppercase">{c.count} CTAS</p>
+                              </div>
+                           </div>
+
+                           {/* Month Label */}
+                           <div className="mt-8 text-center">
+                              <p className="text-[10px] font-black text-slate-600 tracking-tighter">{displayMonth}</p>
+                              <p className="text-[9px] font-bold text-slate-300">{y}</p>
                            </div>
                            
-                           <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] py-2 px-3 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 shadow-xl font-bold">
-                              Generado: {new Intl.NumberFormat('es-CO').format(m.generated)}<br/>
-                              Recaudado: {new Intl.NumberFormat('es-CO').format(m.collected)}
-                           </div>
-                           
-                           <div className="w-full flex items-end gap-1 h-3/4 justify-center">
-                              <div className="w-1/2 bg-indigo-50 border-t-2 border-indigo-200 rounded-t-lg transition-all hover:bg-indigo-100" style={{ height: `${genHeight}%` }}></div>
-                              <div className="w-1/2 bg-emerald-500 rounded-t-lg transition-all hover:bg-emerald-600" style={{ height: `${collHeight}%` }}></div>
-                           </div>
-                           <div className="mt-4 text-[10px] font-black text-slate-600 uppercase">
-                             {label}
+                           {/* Hover Info Panel */}
+                           <div className="absolute -top-24 left-1/2 -translate-x-1/2 bg-white p-4 rounded-xl shadow-2xl border border-slate-100 opacity-0 group-hover:opacity-100 transition-all z-30 pointer-events-none scale-90 group-hover:scale-100 min-w-[180px]">
+                              <p className="text-[10px] font-black text-slate-400 uppercase mb-3 border-b pb-2">Desglose {displayMonth}</p>
+                              <div className="space-y-2">
+                                <div className="flex justify-between items-center">
+                                  <span className="text-[10px] font-bold text-slate-500">Meta Generada:</span>
+                                  <span className="text-[10px] font-black text-slate-800">{new Intl.NumberFormat('es-CO').format(c.meta)}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-blue-900">
+                                  <span className="text-[10px] font-bold">En Ciclo (Mes):</span>
+                                  <span className="text-[10px] font-black">{new Intl.NumberFormat('es-CO').format(c.collectedSameMonth)}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-blue-500">
+                                  <span className="text-[10px] font-bold">Recuperado:</span>
+                                  <span className="text-[10px] font-black">{new Intl.NumberFormat('es-CO').format(c.collectedLater)}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-slate-400 border-t pt-2">
+                                  <span className="text-[10px] font-bold">Saldo Pendiente:</span>
+                                  <span className="text-[10px] font-black">{new Intl.NumberFormat('es-CO').format(c.meta - totalRecaudado)}</span>
+                                </div>
+                              </div>
                            </div>
                         </div>
                       );
                     })}
                   </div>
-                </div>
-
-                {/* 2. Resumen de Cantidades */}
-                <div className="pt-8 border-t border-slate-50">
-                   <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-sm font-bold text-slate-700 flex items-center gap-2">
-                        <Users className="w-4 h-4 text-blue-500" />
-                        Cuentas Enviadas vs Pagadas
-                      </h3>
-                   </div>
-                   <div className="flex items-center gap-4">
-                      {dbStats.monthlyHistory.map((m: any, idx: number) => (
-                        <div key={idx} className="flex-1 bg-slate-50 rounded-xl p-3 border border-slate-100">
-                           <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">{m.month}</p>
-                           <div className="flex items-center justify-between">
-                              <span className="text-xs font-bold text-slate-700">{m.countGenerated} <span className="text-[10px] font-normal text-slate-400">env.</span></span>
-                              <span className="text-xs font-bold text-emerald-600">{m.countCollected} <span className="text-[10px] font-normal text-slate-400">pag.</span></span>
-                           </div>
-                        </div>
-                      ))}
-                   </div>
                 </div>
               </div>
             )}

@@ -202,6 +202,7 @@ export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | 
     ]) as any[];
     
     const stats = {
+      totalMetaHonorarios: 0, // La meta total inicial (fija)
       totalPendiente: 0,
       totalPagado: 0,
       totalAnulado: 0,
@@ -209,10 +210,10 @@ export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | 
       countPagado: 0,
       countAnulado: 0,
       avgPaymentDays: 0,
-      complianceRate: 0, // % on-time
+      complianceRate: 0,
       avgMoneyLagDays: 0,
       trends: [] as any[],
-      monthlyHistory: [] as any[]
+      cohortHistory: [] as any[] // Análisis de Metas vs Recaudo por Mes de Gestión
     };
 
     let totalPaymentTimeMs = 0;
@@ -223,82 +224,83 @@ export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | 
     let totalWithElaboracion = 0;
 
     const dailyTrends: Record<string, { generated: number, collected: number }> = {};
-
-    const monthHistoryMap: Record<string, { month: string, generated: number, collected: number, countGenerated: number, countCollected: number }> = {};
+    const cohortMap: Record<string, { month: string, meta: number, collectedSameMonth: number, collectedLater: number, totalCollected: number, count: number }> = {};
 
     invoices.forEach((inv: any) => {
       const elabDate = inv.fechaElaboracion || inv.createdAt;
       const elabDateObj = new Date(elabDate);
-      const elabMonthKey = `${elabDateObj.getFullYear()}-${(elabDateObj.getMonth() + 1).toString().padStart(2, '0')}`;
       
-      // Init monthly entry
-      if (!monthHistoryMap[elabMonthKey]) {
-        monthHistoryMap[elabMonthKey] = { month: elabMonthKey, generated: 0, collected: 0, countGenerated: 0, countCollected: 0 };
-      }
-      monthHistoryMap[elabMonthKey].generated += inv.honorariosTotal;
-      monthHistoryMap[elabMonthKey].countGenerated += 1;
-
-      // Filter for Snapshot Cards (The user visible range)
+      // Global snapshot filters
       const isInRange = (!startDate || elabDateObj >= new Date(startDate)) && (!endDate || elabDateObj <= new Date(endDate));
-      
-      // Trends by date elaborated/sent (fallback to createdAt)
-      const dateKey = elabDateObj.toISOString().split('T')[0];
-      if (!dailyTrends[dateKey]) dailyTrends[dateKey] = { generated: 0, collected: 0 };
-      dailyTrends[dateKey].generated += inv.honorariosTotal;
 
-      // Policy Compliance (by the 10th of next month of Gestion)
-      if (inv.gestionMes && inv.gestionAnio && elabDate) {
-        const dElab = new Date(elabDate);
-        if (!isNaN(dElab.getTime())) {
-          const deadline = new Date(inv.gestionAnio, inv.gestionMes, 10); 
-          if (dElab <= deadline) onTimeCount++;
-          totalWithElaboracion++;
+      // 1. Cohort Tracking (By Gestión)
+      if (inv.gestionMes && inv.gestionAnio) {
+        const cohortKey = `${inv.gestionAnio}-${inv.gestionMes.toString().padStart(2, '0')}`;
+        if (!cohortMap[cohortKey]) {
+          cohortMap[cohortKey] = { month: cohortKey, meta: 0, collectedSameMonth: 0, collectedLater: 0, totalCollected: 0, count: 0 };
+        }
+        cohortMap[cohortKey].meta += inv.honorariosTotal;
+        cohortMap[cohortKey].count += 1;
+
+        if (inv.status === 'PAGADA' && inv.fechaPago) {
+          const pDate = new Date(inv.fechaPago);
+          // Check if paid in the same management month or later
+          const isSameMonth = pDate.getFullYear() === inv.gestionAnio && (pDate.getMonth() + 1) === inv.gestionMes;
+          
+          if (isSameMonth) {
+            cohortMap[cohortKey].collectedSameMonth += inv.montoPagado || 0;
+          } else {
+            cohortMap[cohortKey].collectedLater += inv.montoPagado || 0;
+          }
+          cohortMap[cohortKey].totalCollected += inv.montoPagado || 0;
         }
       }
 
-      // Money Intake Lag (Wait for payment to subtract elabDate)
-      if (inv.status === 'PAGADA') {
-        const pDate = inv.fechaPago ? new Date(inv.fechaPago) : null;
-        if (pDate) {
-            const pMonthKey = `${pDate.getFullYear()}-${(pDate.getMonth() + 1).toString().padStart(2, '0')}`;
-            if (!monthHistoryMap[pMonthKey]) {
-                monthHistoryMap[pMonthKey] = { month: pMonthKey, generated: 0, collected: 0, countGenerated: 0, countCollected: 0 };
-            }
-            monthHistoryMap[pMonthKey].collected += inv.montoPagado || 0;
-            monthHistoryMap[pMonthKey].countCollected += 1;
-
-            if (elabDate) {
-                const diff = pDate.getTime() - new Date(elabDate).getTime();
-                if (diff > 0) {
-                    totalPaymentTimeMs += diff;
-                    paidCountWithDates++;
-                }
-            }
-            
-            // Stats Snapshot
-            if (isInRange) {
-              stats.totalPagado += inv.montoPagado || 0;
-              stats.countPagado++;
-              dailyTrends[dateKey].collected += inv.montoPagado || 0;
-            }
-        }
-      } else if (inv.status === 'ANULADA') {
-        if (isInRange) {
+      // 2. Dashboard Snapshot Cards
+      if (isInRange) {
+        stats.totalMetaHonorarios += inv.honorariosTotal; // Meta fija del periodo
+        
+        if (inv.status === 'ANULADA') {
           stats.totalAnulado += inv.honorariosTotal;
           stats.countAnulado++;
-        }
-      } else {
-        if (isInRange) {
+        } else if (inv.status === 'PAGADA') {
+          stats.totalPagado += inv.montoPagado || 0;
+          stats.countPagado++;
+        } else {
           stats.totalPendiente += inv.honorariosTotal;
           stats.countPendiente++;
         }
       }
 
-      // Money Intake Lag (Lag entre fecha de pago y entrada al banco)
+      // 3. Trends & Other Metrics (Logic remains similar but uses honorariosTotal)
+      const dateKey = elabDateObj.toISOString().split('T')[0];
+      if (isInRange) {
+        if (!dailyTrends[dateKey]) dailyTrends[dateKey] = { generated: 0, collected: 0 };
+        dailyTrends[dateKey].generated += inv.honorariosTotal;
+        if (inv.status === 'PAGADA' && inv.montoPagado) {
+          dailyTrends[dateKey].collected += inv.montoPagado;
+        }
+      }
+
+      // Compliance
+      if (inv.gestionMes && inv.gestionAnio && elabDate) {
+        const deadline = new Date(inv.gestionAnio, inv.gestionMes, 10);
+        if (elabDateObj <= deadline) onTimeCount++;
+        totalWithElaboracion++;
+      }
+
+      // Payment Lag
+      if (inv.status === 'PAGADA' && inv.fechaPago && elabDate) {
+        const diff = new Date(inv.fechaPago).getTime() - elabDateObj.getTime();
+        if (diff > 0) {
+          totalPaymentTimeMs += diff;
+          paidCountWithDates++;
+        }
+      }
+      
+      // Money Lag
       if (inv.fechaPago && inv.fechaIngresoPorte) {
-        const dPago = new Date(inv.fechaPago);
-        const dIngreso = new Date(inv.fechaIngresoPorte);
-        const lag = dIngreso.getTime() - dPago.getTime();
+        const lag = new Date(inv.fechaIngresoPorte).getTime() - new Date(inv.fechaPago).getTime();
         if (lag >= 0) {
           totalMoneyLagMs += lag;
           itemsWithIntakeDate++;
@@ -306,9 +308,13 @@ export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | 
       }
     });
 
-    stats.monthlyHistory = Object.values(monthHistoryMap)
-        .sort((a, b) => a.month.localeCompare(b.month))
-        .slice(-6); // Last 6 months
+    stats.cohortHistory = Object.values(cohortMap)
+      .sort((a, b) => a.month.localeCompare(b.month))
+      .slice(-6);
+
+    stats.trends = Object.entries(dailyTrends)
+      .map(([date, vals]) => ({ date, ...vals }))
+      .sort((a, b) => a.date.localeCompare(b.date));
 
     if (paidCountWithDates > 0) {
       stats.avgPaymentDays = Math.ceil(totalPaymentTimeMs / (1000 * 60 * 60 * 24 * paidCountWithDates));
