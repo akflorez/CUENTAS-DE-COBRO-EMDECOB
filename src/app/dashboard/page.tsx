@@ -204,12 +204,24 @@ export default function DashboardIndex() {
 
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex items-center group hover:border-blue-200 transition-all">
               <div className="p-4 bg-blue-50 text-blue-600 rounded-2xl mr-5 group-hover:scale-110 transition-transform">
+                <CheckCircle2 className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">CUMPLIMIENTO (DÍA 10)</p>
+                <h3 className="text-xl font-black text-blue-600">
+                  {dbStats.complianceRate || 0}% <span className="text-xs font-bold text-slate-400 font-normal">a tiempo</span>
+                </h3>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex items-center group hover:border-purple-200 transition-all">
+              <div className="p-4 bg-purple-50 text-purple-600 rounded-2xl mr-5 group-hover:scale-110 transition-transform">
                 <Timer className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">Promedio de Pago</p>
-                <h3 className="text-xl font-black text-blue-600">
-                  {dbStats.avgPaymentDays || 0} <span className="text-xs font-bold text-slate-400 font-normal">días</span>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">LAG ENTRADA DINERO</p>
+                <h3 className="text-xl font-black text-purple-600">
+                  {dbStats.avgMoneyLagDays || 0} <span className="text-xs font-bold text-slate-400 font-normal">días</span>
                 </h3>
               </div>
             </div>
@@ -431,6 +443,7 @@ export default function DashboardIndex() {
                   <th className="px-6 py-4">Mes</th>
                   <th className="px-6 py-4 text-center">Cant. de Cuentas</th>
                   <th className="px-6 py-4 text-right">Honorarios Proyectados</th>
+                  <th className="px-6 py-4 text-center">Cumplimiento Política</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-sm">
@@ -444,6 +457,16 @@ export default function DashboardIndex() {
                     </td>
                     <td className="px-6 py-4 text-right font-medium text-slate-900">
                       {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(stat.totalGenerated)}
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                       {stat.count > 0 ? (
+                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                           (stat.onTimeCount / stat.count) >= 0.9 ? 'bg-emerald-100 text-emerald-800' : 
+                           (stat.onTimeCount / stat.count) >= 0.7 ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800'
+                         }`}>
+                           {Math.round((stat.onTimeCount / stat.count) * 100)}% a tiempo
+                         </span>
+                       ) : '-'}
                     </td>
                   </tr>
                 ))}

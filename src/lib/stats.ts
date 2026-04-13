@@ -11,6 +11,8 @@ export interface MonthStats {
   month: string;
   count: number;
   totalGenerated: number;
+  onTimeCount: number;
+  avgMoneyLagDays: number;
 }
 
 export const getAdvisorStats = (records: MappedRecord[]): AdvisorStats[] => {
@@ -34,30 +36,38 @@ export const getMonthStats = (records: MappedRecord[]): MonthStats[] => {
   const statsMap = new Map<string, MonthStats>();
 
   for (const rec of records) {
-    // Assuming we base the month on the first item's fechaPago
-    // Alternatively, we could iterate over all items if items have different dates, 
-    // but usually a MappedRecord (cuenta de cobro) corresponds to one period or we just take the first payment date.
-    let monthLabel = "Fecha Desconocida";
+    let monthLabel = "Gestión Desconocida";
     
-    if (rec.items && rec.items.length > 0) {
-      const parsedDate = parseExcelDate(rec.items[0].fechaPago);
-      if (parsedDate) {
-        // Capitalize the first letter for better UI
-        const formatted = formatMonthYear(parsedDate);
-        monthLabel = formatted.charAt(0).toUpperCase() + formatted.slice(1);
-      }
+    if (rec.gestionMes && rec.gestionAnio) {
+      const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+      monthLabel = `Gestión ${months[rec.gestionMes - 1]} ${rec.gestionAnio}`;
     }
 
-    const current = statsMap.get(monthLabel) || { month: monthLabel, count: 0, totalGenerated: 0 };
+    const current = statsMap.get(monthLabel) || { 
+      month: monthLabel, 
+      count: 0, 
+      totalGenerated: 0,
+      onTimeCount: 0,
+      avgMoneyLagDays: 0
+    };
     
     current.count += 1;
     current.totalGenerated += rec.honorariosTotal || 0;
     
+    // Check compliance for session records
+    if (rec.gestionMes && rec.gestionAnio && rec.items[0]?.fechaElaboracion) {
+      const dElab = parseExcelDate(rec.items[0].fechaElaboracion);
+      if (dElab) {
+        const deadline = new Date(rec.gestionAnio, rec.gestionMes, 10); // 10th of next month (Note: months are 0-indexed in JS, so gestionMes is already the next month index if gestionMes is 1-based)
+        if (dElab <= deadline) {
+          current.onTimeCount++;
+        }
+      }
+    }
+
     statsMap.set(monthLabel, current);
   }
 
-  // Convert array and sort by total generated desc, or alphabetically/chronologically
-  // Sorting by total generated desc for consistency with advisor stats
   return Array.from(statsMap.values()).sort((a, b) => b.totalGenerated - a.totalGenerated);
 };
 

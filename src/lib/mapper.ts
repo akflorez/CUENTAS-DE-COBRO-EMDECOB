@@ -5,6 +5,8 @@ export type ValidationResult = {
 
 export type RecordItem = {
   fechaPago: string | Date;
+  fechaIngresoPorte: string | Date;
+  fechaElaboracion: string | Date;
   predio: string; // direccion + matricula
   capital: number;
   intereses: number;
@@ -14,14 +16,16 @@ export type RecordItem = {
 };
 
 export type MappedRecord = {
-  nombre: string; // Ya no debe aparecer el nombre en la plantilla, pero se conserva logicamente si se requiere
+  nombre: string;
   cedula: string | number;
-  conjuntoNombre: string; // CARTERA
+  conjuntoNombre: string;
   asesor: string;
   consecutivo: string;
   
-  // Agrupadores obligados
-  estadoCobro: string; // CUENTA DE COBRO (PENDIENTE)
+  // Agrupadores
+  estadoCobro: string; 
+  gestionMes?: number;
+  gestionAnio?: number;
   
   // Elementos de la tabla
   items: RecordItem[];
@@ -65,7 +69,9 @@ export function mapRawRecord(row: any) {
     honorarios: parseNumber(findCol(row, "HONORARIOS", "HONORARIOS ", "GASTOS COBRANZAS")),
     iva: parseNumber(findCol(row, "IVA", "IVA ")),
     total: parseNumber(findCol(row, "TOTAL", "TOTAL ", "VALOR TOTAL", "TOTAL A PAGAR")),
-    fechaPago: findCol(row, "FECHA INGRESO DINERO", "FECHA INGRESO DEL DINERO", "FECHA INGRESO", "FECHA DE PAGO", "FECHA PAGO", "FECHA"),
+    fechaPago: findCol(row, "FECHA DE PAGO", "FECHA PAGO", "FECHA"),
+    fechaIngreso: findCol(row, "FECHA INGRESO DINERO", "FECHA INGRESO DEL DINERO", "FECHA INGRESO"),
+    fechaElaboracion: findCol(row, "FECHA ELABORACION", "FECHA CREACION", "FECHA CUENTA DE COBRO", "FECHA DE CREACION"),
     estadoCobro: findCol(row, "CUENTA DE COBRO", "CUENTA DE COBRO "),
     asesor: findCol(row, "ASESOR", "ASESOR ", "ASESORA"),
     originalRow: row
@@ -90,6 +96,8 @@ export function groupRecords(rawRows: any[], startingConsecutive: number = 1): M
     // Crear el item para la tabla
     const item: RecordItem = {
       fechaPago: mapped.fechaPago,
+      fechaIngresoPorte: mapped.fechaIngreso,
+      fechaElaboracion: mapped.fechaElaboracion,
       predio: `${mapped.direccion} ${mapped.matricula ? `(${mapped.matricula})` : ''}`.trim(),
       capital: mapped.capital,
       intereses: mapped.intereses,
@@ -108,12 +116,25 @@ export function groupRecords(rawRows: any[], startingConsecutive: number = 1): M
       // granTotal = solo lo que se cobra: Honorarios + IVA
       existing.granTotal += item.honorarios + item.iva;
     } else {
+      // Determinamos el mes de gestión basado en la fecha de pago
+      let gMes: number | undefined;
+      let gAnio: number | undefined;
+      
+      const { parseExcelDate } = require('./utils');
+      const dPago = parseExcelDate(mapped.fechaPago);
+      if (dPago) {
+        gMes = dPago.getMonth() + 1;
+        gAnio = dPago.getFullYear();
+      }
+
       grouped.set(conjunto, {
         nombre: mapped.nombre,
         cedula: mapped.cedula,
         conjuntoNombre: conjunto,
         asesor: mapped.asesor,
         estadoCobro: mapped.estadoCobro,
+        gestionMes: gMes,
+        gestionAnio: gAnio,
         consecutivo: String(new Date().getFullYear()) + "-" + String(consecutivoCounter).padStart(4, '0'),
         items: [item],
         capitalTotal: item.capital,

@@ -20,6 +20,10 @@ model Invoice {
   granTotal         Float
   status            String        @default("PENDIENTE")
   fechaPago         DateTime?
+  fechaIngresoPorte DateTime?
+  fechaElaboracion  DateTime?
+  gestionMes        Int?
+  gestionAnio       Int?
   validadoTesoreria Boolean       @default(false)
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
@@ -29,10 +33,12 @@ model Invoice {
 }
 
 model InvoiceItem {
-  id         String  @id @default(cuid())
-  invoiceId  String
-  fechaPago  String?
-  predio     String
+  id                String  @id @default(cuid())
+  invoiceId         String
+  fechaPago         String?
+  fechaIngresoPorte String?
+  fechaElaboracion  String?
+  predio            String
   capital    Float
   intereses  Float
   honorarios Float

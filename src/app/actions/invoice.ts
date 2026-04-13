@@ -28,9 +28,16 @@ export async function saveInvoiceRecord(data: MappedRecord) {
         honorariosTotal: data.honorariosTotal,
         ivaTotal: data.ivaTotal,
         granTotal: data.granTotal,
+        gestionMes: data.gestionMes,
+        gestionAnio: data.gestionAnio,
+        fechaElaboracion: data.items[0]?.fechaElaboracion ? new Date(data.items[0].fechaElaboracion as string) : null,
+        fechaIngresoPorte: data.items[0]?.fechaIngresoPorte ? new Date(data.items[0].fechaIngresoPorte as string) : null,
+        fechaPago: data.items[0]?.fechaPago ? new Date(data.items[0].fechaPago as string) : null,
         items: {
           create: data.items.map(item => ({
             fechaPago: item.fechaPago?.toString(),
+            fechaIngresoPorte: item.fechaIngresoPorte?.toString(),
+            fechaElaboracion: item.fechaElaboracion?.toString(),
             predio: item.predio,
             capital: item.capital,
             intereses: item.intereses,
@@ -197,11 +204,18 @@ export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | 
       countPagado: 0,
       countAnulado: 0,
       avgPaymentDays: 0,
+      complianceRate: 0, // % on-time
+      avgMoneyLagDays: 0,
       trends: [] as any[]
     };
 
     let totalPaymentTimeMs = 0;
     let paidCountWithDates = 0;
+    let totalMoneyLagMs = 0;
+    let itemsWithIntakeDate = 0;
+    let onTimeCount = 0;
+    let totalWithElaboracion = 0;
+
     const dailyTrends: Record<string, { generated: number, collected: number }> = {};
 
     invoices.forEach((inv: any) => {
@@ -209,6 +223,31 @@ export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | 
       const dateKey = inv.createdAt.toISOString().split('T')[0];
       if (!dailyTrends[dateKey]) dailyTrends[dateKey] = { generated: 0, collected: 0 };
       dailyTrends[dateKey].generated += inv.honorariosTotal;
+
+      // Policy Compliance (by the 10th of next month)
+      if (inv.fechaPago && inv.fechaElaboracion) {
+        const dPago = new Date(inv.fechaPago);
+        const dElab = new Date(inv.fechaElaboracion);
+        
+        // Month after payment
+        const deadline = new Date(dPago.getFullYear(), dPago.getMonth() + 1, 10);
+        
+        if (dElab <= deadline) {
+          onTimeCount++;
+        }
+        totalWithElaboracion++;
+      }
+
+      // Money Intake Lag
+      if (inv.fechaPago && inv.fechaIngresoPorte) {
+        const dPago = new Date(inv.fechaPago);
+        const dIngreso = new Date(inv.fechaIngresoPorte);
+        const lag = dIngreso.getTime() - dPago.getTime();
+        if (lag >= 0) {
+          totalMoneyLagMs += lag;
+          itemsWithIntakeDate++;
+        }
+      }
 
       if (inv.status === 'PAGADA') {
         stats.totalPagado += inv.montoPagado || 0;
@@ -233,6 +272,14 @@ export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | 
 
     if (paidCountWithDates > 0) {
       stats.avgPaymentDays = Math.ceil(totalPaymentTimeMs / (1000 * 60 * 60 * 24 * paidCountWithDates));
+    }
+
+    if (totalWithElaboracion > 0) {
+      stats.complianceRate = Math.round((onTimeCount / totalWithElaboracion) * 100);
+    }
+
+    if (itemsWithIntakeDate > 0) {
+      stats.avgMoneyLagDays = Math.ceil(totalMoneyLagMs / (1000 * 60 * 60 * 24 * itemsWithIntakeDate));
     }
 
     // Convert trends to array and sort
