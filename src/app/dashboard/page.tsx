@@ -351,20 +351,30 @@ export default function DashboardIndex() {
 
                   <div className="absolute inset-0 flex items-end justify-between gap-10">
                     {dbStats.cohortHistory.map((c: any, idx: number) => {
-                      const totalRecaudado = c.collectedSameMonth + c.collectedLater;
+                      const totalRecaudado = c.totalCollected; // meta - c.pending theoretically
                       const efficacy = c.meta > 0 ? Math.round((totalRecaudado / c.meta) * 100) : 0;
                       
-                      // Percentages for the stacked bar
-                      const sameP = (c.collectedSameMonth / c.meta) * 100;
-                      const laterP = (c.collectedLater / c.meta) * 100;
-                      const pendingP = 100 - (sameP + laterP);
-
                       const monthLabels: Record<string, string> = {
-                        "01": "ENERO", "02": "FEBRERO", "03": "MARZO", "04": "ABRIL", "05": "MAYO", "06": "JUNIO",
-                        "07": "JULIO", "08": "AGOSTO", "09": "SEPTIEMBRE", "10": "OCTUBRE", "11": "NOVIEMBRE", "12": "DICIEMBRE"
+                        "01": "ENE", "02": "FEB", "03": "MAR", "04": "ABR", "05": "MAY", "06": "JUN",
+                        "07": "JUL", "08": "AGO", "09": "SEP", "10": "OCT", "11": "NOV", "12": "DIC"
                       };
                       const [y, m] = c.month.split("-");
                       const displayMonth = monthLabels[m];
+
+                      // Multi-Segment Calculation
+                      const recoveryEntries = Object.entries(c.recoveriesByMonth as Record<string, number>)
+                        .sort((a, b) => a[0].localeCompare(b[0]));
+                      
+                      const pendingAmount = Math.max(0, c.meta - totalRecaudado);
+                      const pendingP = (pendingAmount / c.meta) * 100;
+
+                      // Color Palette for aging segments
+                      const segmentColors = [
+                        "bg-blue-900", // Mes 0
+                        "bg-blue-600", // Mes +1
+                        "bg-blue-400", // Mes +2
+                        "bg-cyan-400", // Mes +3+
+                      ];
 
                       return (
                         <div key={idx} className="flex-1 flex flex-col justify-end items-center group relative h-full">
@@ -373,47 +383,58 @@ export default function DashboardIndex() {
                              className="absolute left-1/2 -translate-x-1/2 w-4 h-4 bg-white border-4 border-emerald-500 rounded-full z-10 transition-all group-hover:scale-125"
                              style={{ bottom: `${efficacy}%`, marginBottom: '-8px' }}
                            >
-                             <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-emerald-600 text-white text-[10px] font-black px-2 py-0.5 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                               {efficacy}% Eficacia
+                             <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-emerald-600 text-white text-[10px] font-black px-2 py-1 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
+                               {efficacy}% RECAUDADO
                              </div>
                            </div>
 
-                           {/* Stacked Bar */}
-                           <div className="w-full max-w-[80px] h-full flex flex-col-reverse rounded-xl overflow-hidden shadow-sm border border-slate-50 transition-transform group-hover:-translate-y-1">
-                              {/* Bottom: Same Month */}
-                              <div 
-                                className="bg-blue-900 flex items-center justify-center relative transition-all duration-700" 
-                                style={{ height: `${sameP}%` }}
-                              >
-                                {sameP > 15 && <span className="text-[9px] text-white/50 font-black rotate-90">{Math.round(sameP)}%</span>}
-                              </div>
-                              {/* Middle: Later Month */}
-                              <div 
-                                className="bg-blue-500 flex items-center justify-center relative transition-all duration-700" 
-                                style={{ height: `${laterP}%` }}
-                              >
-                                {laterP > 15 && <span className="text-[9px] text-white/80 font-black rotate-90">{Math.round(laterP)}%</span>}
-                              </div>
+                           {/* Stacked Bar with Multiple Recovery Segments */}
+                           <div className="w-full max-w-[90px] h-full flex flex-col-reverse rounded-xl overflow-hidden shadow-sm border border-slate-50 transition-all group-hover:shadow-md">
+                              {/* Recovery Segments */}
+                              {recoveryEntries.map(([rMonth, amount], sIdx) => {
+                                const p = (amount / c.meta) * 100;
+                                if (p < 0.5) return null; // Skip tiny segments
+                                
+                                const colorClass = segmentColors[Math.min(sIdx, segmentColors.length - 1)];
+                                const [ry, rm] = rMonth.split("-");
+                                const rMonthShort = monthLabels[rm];
+
+                                return (
+                                  <div 
+                                    key={rMonth} 
+                                    className={`${colorClass} flex items-center justify-center relative transition-all duration-700 hover:brightness-110 group/segment`} 
+                                    style={{ height: `${p}%` }}
+                                  >
+                                    {p > 10 && (
+                                       <div className="flex flex-col items-center pointer-events-none">
+                                          <span className="text-[9px] text-white font-black leading-none">{Math.round(p)}%</span>
+                                          <span className="text-[7px] text-white/60 font-medium uppercase">{rMonthShort}</span>
+                                       </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+
                               {/* Top: Pending */}
                               <div 
                                 className="bg-slate-100 flex items-center justify-center relative transition-all duration-700" 
                                 style={{ height: `${pendingP}%` }}
                               >
-                                {pendingP > 15 && <span className="text-[9px] text-slate-400 font-black rotate-90">{Math.round(pendingP)}%</span>}
+                                {pendingP > 15 && <span className="text-[9px] text-slate-400 font-extrabold rotate-90">{Math.round(pendingP)}% <span className="text-[7px]">PEND</span></span>}
                               </div>
 
-                              {/* Label flotante arriba del todo con la Meta */}
-                              <div className="absolute -top-12 w-full text-center">
-                                <p className="text-[12px] font-black text-slate-800">
+                              {/* Meta Label above bar */}
+                              <div className="absolute -top-14 w-full text-center">
+                                <p className="text-[14px] font-black text-slate-800 leading-tight">
                                   {new Intl.NumberFormat('es-CO', { notation: 'compact' }).format(c.meta)}
                                 </p>
-                                <p className="text-[8px] font-bold text-slate-400 uppercase">{c.count} CTAS</p>
+                                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">META TOTAL</p>
                               </div>
                            </div>
 
                            {/* Month Label */}
-                           <div className="mt-8 text-center">
-                              <p className="text-[10px] font-black text-slate-600 tracking-tighter">{displayMonth}</p>
+                           <div className="mt-10 text-center">
+                              <p className="text-[11px] font-black text-slate-700 tracking-tight">{displayMonth}</p>
                               <p className="text-[9px] font-bold text-slate-300">{y}</p>
                            </div>
                            
