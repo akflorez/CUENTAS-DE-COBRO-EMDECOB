@@ -291,17 +291,20 @@ export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | 
 
       // 2. Dashboard Snapshot Cards
       if (isInRange) {
-        stats.totalMetaHonorarios += inv.honorariosTotal; // Meta fija del periodo
-        
         if (inv.status === 'ANULADA') {
           stats.totalAnulado += inv.honorariosTotal;
           stats.countAnulado++;
-        } else if (inv.status === 'PAGADA') {
-          stats.totalPagado += inv.montoPagado || 0;
-          stats.countPagado++;
+          // No sumamos a la meta útil si está anulado
         } else {
-          stats.totalPendiente += inv.honorariosTotal;
-          stats.countPendiente++;
+          stats.totalMetaHonorarios += inv.honorariosTotal; // Meta útil (No anulados)
+          
+          if (inv.status === 'PAGADA') {
+            stats.totalPagado += inv.montoPagado || 0;
+            stats.countPagado++;
+          } else {
+            stats.totalPendiente += inv.honorariosTotal;
+            stats.countPendiente++;
+          }
         }
       }
 
