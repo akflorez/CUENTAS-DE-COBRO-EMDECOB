@@ -204,9 +204,9 @@ export default function DashboardIndex() {
                 <CheckCircle2 className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">CUMPLIMIENTO (DÍA 10)</p>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">Días de Pago (Demora)</p>
                 <h3 className="text-xl font-black text-blue-600">
-                  {dbStats.complianceRate || 0}% <span className="text-xs font-bold text-slate-400 font-normal">a tiempo</span>
+                  {dbStats.avgPaymentDays || 0} <span className="text-xs font-bold text-slate-400 font-normal">días prom.</span>
                 </h3>
               </div>
             </div>
@@ -216,9 +216,9 @@ export default function DashboardIndex() {
                 <Timer className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">LAG ENTRADA DINERO</p>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">CUMPLIMIENTO (DÍA 10)</p>
                 <h3 className="text-xl font-black text-purple-600">
-                  {dbStats.avgMoneyLagDays || 0} <span className="text-xs font-bold text-slate-400 font-normal">días</span>
+                  {dbStats.complianceRate || 0}% <span className="text-xs font-bold text-slate-400 font-normal">a tiempo</span>
                 </h3>
               </div>
             </div>
@@ -242,9 +242,9 @@ export default function DashboardIndex() {
                   <div>
                     <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                        <BarChart3 className="w-5 h-5 text-emerald-500" />
-                       Tendencia de Gestión (Últimos 15 días)
+                       Actividad Diaria (Últimos 15 días)
                     </h3>
-                    <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mt-1">Comparativa de Cuentas Generadas vs Recaudos Reales</p>
+                    <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mt-1">G: Enviado (Día de Elaboración) | R: Recaudado (Entrada Banco)</p>
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
@@ -289,6 +289,93 @@ export default function DashboardIndex() {
                        </div>
                      )
                    })}
+                </div>
+              </div>
+            )}
+
+            {/* Nuevo Gráfico: Historial Mensual */}
+            {dbStats.monthlyHistory && dbStats.monthlyHistory.length > 0 && (
+              <div className="md:col-span-4 bg-white rounded-2xl shadow-sm border border-slate-100 p-8 space-y-12">
+                {/* 1. Gráfico de Dinero con Porcentajes */}
+                <div>
+                  <div className="flex items-center justify-between mb-8">
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                        <Scale className="w-5 h-5 text-indigo-500" />
+                        Historial de Flujo Mensual (Generado vs Recaudado)
+                      </h3>
+                      <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mt-1">Comparativa de Honorarios Enviados vs Recaudos Totales por Mes</p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 bg-indigo-100 rounded-sm"></div>
+                        <span className="text-[10px] font-bold text-slate-500">GENERADO</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 bg-emerald-500 rounded-sm"></div>
+                        <span className="text-[10px] font-bold text-slate-500">RECAUDADO</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-end justify-between h-56 gap-8 px-4 border-b border-slate-100 pb-2">
+                    {dbStats.monthlyHistory.map((m: any, idx: number) => {
+                      const maxVal = Math.max(...dbStats.monthlyHistory.map((x: any) => Math.max(x.generated, x.collected)), 1);
+                      const genHeight = (m.generated / maxVal) * 100;
+                      const collHeight = (m.collected / maxVal) * 100;
+                      const percentage = m.generated > 0 ? Math.round((m.collected / m.generated) * 100) : 0;
+                      
+                      const monthNames: Record<string, string> = {
+                        "01": "Ene", "02": "Feb", "03": "Mar", "04": "Abr", "05": "May", "06": "Jun",
+                        "07": "Jul", "08": "Ago", "09": "Sep", "10": "Oct", "11": "Nov", "12": "Dic"
+                      };
+                      const [y, mm] = m.month.split("-");
+                      const label = `${monthNames[mm]} ${y}`;
+
+                      return (
+                        <div key={idx} className="flex-1 flex flex-col justify-end items-center group relative h-full">
+                           {/* Label de Porcentaje arriba de las barras */}
+                           <div className={`mb-2 text-[10px] font-black ${percentage >= 80 ? 'text-emerald-600' : 'text-slate-400'}`}>
+                              {percentage}%
+                           </div>
+                           
+                           <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] py-2 px-3 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 shadow-xl font-bold">
+                              Generado: {new Intl.NumberFormat('es-CO').format(m.generated)}<br/>
+                              Recaudado: {new Intl.NumberFormat('es-CO').format(m.collected)}
+                           </div>
+                           
+                           <div className="w-full flex items-end gap-1 h-3/4 justify-center">
+                              <div className="w-1/2 bg-indigo-50 border-t-2 border-indigo-200 rounded-t-lg transition-all hover:bg-indigo-100" style={{ height: `${genHeight}%` }}></div>
+                              <div className="w-1/2 bg-emerald-500 rounded-t-lg transition-all hover:bg-emerald-600" style={{ height: `${collHeight}%` }}></div>
+                           </div>
+                           <div className="mt-4 text-[10px] font-black text-slate-600 uppercase">
+                             {label}
+                           </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 2. Resumen de Cantidades */}
+                <div className="pt-8 border-t border-slate-50">
+                   <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                        <Users className="w-4 h-4 text-blue-500" />
+                        Cuentas Enviadas vs Pagadas
+                      </h3>
+                   </div>
+                   <div className="flex items-center gap-4">
+                      {dbStats.monthlyHistory.map((m: any, idx: number) => (
+                        <div key={idx} className="flex-1 bg-slate-50 rounded-xl p-3 border border-slate-100">
+                           <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">{m.month}</p>
+                           <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-slate-700">{m.countGenerated} <span className="text-[10px] font-normal text-slate-400">env.</span></span>
+                              <span className="text-xs font-bold text-emerald-600">{m.countCollected} <span className="text-[10px] font-normal text-slate-400">pag.</span></span>
+                           </div>
+                        </div>
+                      ))}
+                   </div>
                 </div>
               </div>
             )}

@@ -172,18 +172,21 @@ export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | 
   try {
     const prisma = getPrisma();
     const where: any = {};
+    // Para el histórico, siempre vamos a traer los últimos 6 meses independientemente del filtro visual del dashboard
+    // Pero respetaremos el filtro de conjunto
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    
+    where.OR = [
+      { createdAt: { gte: sixMonthsAgo } }, // Lo creado recientemente
+      { fechaPago: { gte: sixMonthsAgo } },  // Lo pagado recientemente (aunque se haya creado hace un año)
+      { fechaElaboracion: { gte: sixMonthsAgo } } // Lo enviado recientemente
+    ];
+
     if (startDate || endDate) {
-      where.createdAt = {};
-      if (startDate) {
-        const d = new Date(startDate);
-        d.setHours(0, 0, 0, 0);
-        where.createdAt.gte = d;
-      }
-      if (endDate) {
-        const d = new Date(endDate);
-        d.setHours(23, 59, 59, 999);
-        where.createdAt.lte = d;
-      }
+      // Si hay filtros, solo afectarán a los totales de las tarjetas (snapshot), 
+      // pero para el gráfico traeremos más data para dar contexto.
+      // Implementaremos el filtrado de tarjetas en memoria abajo.
     }
     if (conjunto && conjunto !== "Todos") {
       where.conjuntoNombre = conjunto;
@@ -208,7 +211,8 @@ export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | 
       avgPaymentDays: 0,
       complianceRate: 0, // % on-time
       avgMoneyLagDays: 0,
-      trends: [] as any[]
+      trends: [] as any[],
+      monthlyHistory: [] as any[]
     };
 
     let totalPaymentTimeMs = 0;
@@ -220,29 +224,77 @@ export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | 
 
     const dailyTrends: Record<string, { generated: number, collected: number }> = {};
 
+    const monthHistoryMap: Record<string, { month: string, generated: number, collected: number, countGenerated: number, countCollected: number }> = {};
+
     invoices.forEach((inv: any) => {
-      // Trends by date elaborated/sent (fallback to createdAt)
       const elabDate = inv.fechaElaboracion || inv.createdAt;
-      const dateKey = new Date(elabDate).toISOString().split('T')[0];
+      const elabDateObj = new Date(elabDate);
+      const elabMonthKey = `${elabDateObj.getFullYear()}-${(elabDateObj.getMonth() + 1).toString().padStart(2, '0')}`;
+      
+      // Init monthly entry
+      if (!monthHistoryMap[elabMonthKey]) {
+        monthHistoryMap[elabMonthKey] = { month: elabMonthKey, generated: 0, collected: 0, countGenerated: 0, countCollected: 0 };
+      }
+      monthHistoryMap[elabMonthKey].generated += inv.honorariosTotal;
+      monthHistoryMap[elabMonthKey].countGenerated += 1;
+
+      // Filter for Snapshot Cards (The user visible range)
+      const isInRange = (!startDate || elabDateObj >= new Date(startDate)) && (!endDate || elabDateObj <= new Date(endDate));
+      
+      // Trends by date elaborated/sent (fallback to createdAt)
+      const dateKey = elabDateObj.toISOString().split('T')[0];
       if (!dailyTrends[dateKey]) dailyTrends[dateKey] = { generated: 0, collected: 0 };
       dailyTrends[dateKey].generated += inv.honorariosTotal;
 
       // Policy Compliance (by the 10th of next month of Gestion)
       if (inv.gestionMes && inv.gestionAnio && elabDate) {
         const dElab = new Date(elabDate);
-        if (isNaN(dElab.getTime())) return;
-        
-        // Month after the Gestion period
-        const deadline = new Date(inv.gestionAnio, inv.gestionMes, 10); 
-        // JS Date: month index 3 is April. If gestionMes is 3 (March), then new Date(2026, 3, 10) is April 10th.
-        
-        if (dElab <= deadline) {
-          onTimeCount++;
+        if (!isNaN(dElab.getTime())) {
+          const deadline = new Date(inv.gestionAnio, inv.gestionMes, 10); 
+          if (dElab <= deadline) onTimeCount++;
+          totalWithElaboracion++;
         }
-        totalWithElaboracion++;
       }
 
-      // Money Intake Lag
+      // Money Intake Lag (Wait for payment to subtract elabDate)
+      if (inv.status === 'PAGADA') {
+        const pDate = inv.fechaPago ? new Date(inv.fechaPago) : null;
+        if (pDate) {
+            const pMonthKey = `${pDate.getFullYear()}-${(pDate.getMonth() + 1).toString().padStart(2, '0')}`;
+            if (!monthHistoryMap[pMonthKey]) {
+                monthHistoryMap[pMonthKey] = { month: pMonthKey, generated: 0, collected: 0, countGenerated: 0, countCollected: 0 };
+            }
+            monthHistoryMap[pMonthKey].collected += inv.montoPagado || 0;
+            monthHistoryMap[pMonthKey].countCollected += 1;
+
+            if (elabDate) {
+                const diff = pDate.getTime() - new Date(elabDate).getTime();
+                if (diff > 0) {
+                    totalPaymentTimeMs += diff;
+                    paidCountWithDates++;
+                }
+            }
+            
+            // Stats Snapshot
+            if (isInRange) {
+              stats.totalPagado += inv.montoPagado || 0;
+              stats.countPagado++;
+              dailyTrends[dateKey].collected += inv.montoPagado || 0;
+            }
+        }
+      } else if (inv.status === 'ANULADA') {
+        if (isInRange) {
+          stats.totalAnulado += inv.honorariosTotal;
+          stats.countAnulado++;
+        }
+      } else {
+        if (isInRange) {
+          stats.totalPendiente += inv.honorariosTotal;
+          stats.countPendiente++;
+        }
+      }
+
+      // Money Intake Lag (Lag entre fecha de pago y entrada al banco)
       if (inv.fechaPago && inv.fechaIngresoPorte) {
         const dPago = new Date(inv.fechaPago);
         const dIngreso = new Date(inv.fechaIngresoPorte);
@@ -252,27 +304,11 @@ export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | 
           itemsWithIntakeDate++;
         }
       }
-
-      if (inv.status === 'PAGADA') {
-        stats.totalPagado += inv.montoPagado || 0;
-        stats.countPagado++;
-        dailyTrends[dateKey].collected += inv.montoPagado || 0;
-
-        if (inv.fechaPago) {
-          const diff = new Date(inv.fechaPago).getTime() - new Date(inv.createdAt).getTime();
-          if (diff > 0) {
-            totalPaymentTimeMs += diff;
-            paidCountWithDates++;
-          }
-        }
-      } else if (inv.status === 'ANULADA') {
-        stats.totalAnulado += inv.honorariosTotal;
-        stats.countAnulado++;
-      } else {
-        stats.totalPendiente += inv.honorariosTotal;
-        stats.countPendiente++;
-      }
     });
+
+    stats.monthlyHistory = Object.values(monthHistoryMap)
+        .sort((a, b) => a.month.localeCompare(b.month))
+        .slice(-6); // Last 6 months
 
     if (paidCountWithDates > 0) {
       stats.avgPaymentDays = Math.ceil(totalPaymentTimeMs / (1000 * 60 * 60 * 24 * paidCountWithDates));
