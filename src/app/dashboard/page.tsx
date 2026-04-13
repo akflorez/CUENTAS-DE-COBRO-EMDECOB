@@ -5,10 +5,25 @@ import { useRouter } from "next/navigation";
 import { useAppContext } from "@/context/AppContext";
 import { getAdvisorStats, getMonthStats, getDateRangeStats } from "@/lib/stats";
 import { groupRecords } from "@/lib/mapper";
-import { Users, FileSpreadsheet, Building2, ExternalLink, CalendarDays, Clock, CheckCircle2, AlertCircle, Scale, Zap } from "lucide-react";
+import { 
+  Users, 
+  FileSpreadsheet, 
+  Building2, 
+  ExternalLink, 
+  CalendarDays, 
+  Clock, 
+  CheckCircle2, 
+  AlertCircle, 
+  Scale, 
+  Zap,
+  TrendingUp, 
+  BarChart3, 
+  Timer, 
+  X,
+  Calendar
+} from "lucide-react";
 import Link from "next/link";
 import { getInvoiceStats, getConjuntos } from "@/app/actions/invoice";
-import { TrendingUp, BarChart3, Timer, X } from "lucide-react";
 import SearchableSelect from "@/components/SearchableSelect";
 
 export default function DashboardIndex() {
@@ -402,32 +417,84 @@ export default function DashboardIndex() {
                               <p className="text-[9px] font-bold text-slate-300">{y}</p>
                            </div>
                            
-                           {/* Hover Info Panel */}
-                           <div className="absolute -top-24 left-1/2 -translate-x-1/2 bg-white p-4 rounded-xl shadow-2xl border border-slate-100 opacity-0 group-hover:opacity-100 transition-all z-30 pointer-events-none scale-90 group-hover:scale-100 min-w-[180px]">
-                              <p className="text-[10px] font-black text-slate-400 uppercase mb-3 border-b pb-2">Desglose {displayMonth}</p>
-                              <div className="space-y-2">
-                                <div className="flex justify-between items-center">
-                                  <span className="text-[10px] font-bold text-slate-500">Meta Generada:</span>
-                                  <span className="text-[10px] font-black text-slate-800">{new Intl.NumberFormat('es-CO').format(c.meta)}</span>
+                           {/* Hover Info Panel (VINTAGE BREAKDOWN) */}
+                           <div className="absolute -top-32 left-1/2 -translate-x-1/2 bg-white p-5 rounded-2xl shadow-2xl border border-slate-100 opacity-0 group-hover:opacity-100 transition-all z-40 pointer-events-none scale-90 group-hover:scale-100 min-w-[240px]">
+                              <div className="flex items-center gap-2 mb-4 border-b pb-2">
+                                <Calendar className="w-3 h-3 text-slate-400" />
+                                <p className="text-[10px] font-black text-slate-800 uppercase tracking-tighter">Cronología de Recaudo {displayMonth}</p>
+                              </div>
+                              
+                              <div className="space-y-3">
+                                <div className="flex justify-between items-center text-[10px] bg-slate-50 p-2 rounded-lg">
+                                  <span className="font-bold text-slate-500 uppercase">Meta Total:</span>
+                                  <span className="font-black text-slate-800">{new Intl.NumberFormat('es-CO').format(c.meta)}</span>
                                 </div>
-                                <div className="flex justify-between items-center text-blue-900">
-                                  <span className="text-[10px] font-bold">En Ciclo (Mes):</span>
-                                  <span className="text-[10px] font-black">{new Intl.NumberFormat('es-CO').format(c.collectedSameMonth)}</span>
+
+                                <div className="space-y-1 mt-3 px-1">
+                                  <p className="text-[9px] font-black text-slate-400 uppercase mb-2">Entradas por Mes:</p>
+                                  {Object.entries(c.recoveriesByMonth as Record<string, number>)
+                                    .sort((a, b) => a[0].localeCompare(b[0]))
+                                    .map(([pMonth, amount]) => {
+                                      const [py, pm] = pMonth.split("-");
+                                      const pMonthName = monthLabels[pm] || pm;
+                                      return (
+                                        <div key={pMonth} className="flex justify-between items-center group/item border-l-2 border-blue-100 pl-2">
+                                          <span className="text-[9px] font-bold text-slate-500">{pMonthName} {py}:</span>
+                                          <span className="text-[10px] font-black text-blue-900">{new Intl.NumberFormat('es-CO').format(amount)}</span>
+                                        </div>
+                                      );
+                                    })}
                                 </div>
-                                <div className="flex justify-between items-center text-blue-500">
-                                  <span className="text-[10px] font-bold">Recuperado:</span>
-                                  <span className="text-[10px] font-black">{new Intl.NumberFormat('es-CO').format(c.collectedLater)}</span>
-                                </div>
-                                <div className="flex justify-between items-center text-slate-400 border-t pt-2">
+
+                                <div className="flex justify-between items-center text-slate-400 border-t pt-2 px-1">
                                   <span className="text-[10px] font-bold">Saldo Pendiente:</span>
-                                  <span className="text-[10px] font-black">{new Intl.NumberFormat('es-CO').format(c.meta - totalRecaudado)}</span>
+                                  <span className="text-[10px] font-black text-rose-500">{new Intl.NumberFormat('es-CO').format(c.meta - totalRecaudado)}</span>
                                 </div>
                               </div>
+                              
+                              {/* Decorator Arrow */}
+                              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white border-b border-r border-slate-100 rotate-45"></div>
                            </div>
                         </div>
                       );
                     })}
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Gráfico de Actividad Diaria Re-integrado */}
+            {dbStats.trends && dbStats.trends.length > 0 && (
+              <div className="md:col-span-4 bg-slate-50/50 rounded-2xl border border-slate-100 p-8">
+                <div className="flex items-center justify-between mb-8">
+                  <div>
+                    <h3 className="text-md font-bold text-slate-700 flex items-center gap-2">
+                       <BarChart3 className="w-5 h-5 text-slate-400" />
+                       Monitor de Flujo Diario (Realización)
+                    </h3>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1">Cuentas enviadas vs Recaudos que entraron al banco el mismo día</p>
+                  </div>
+                </div>
+
+                <div className="flex items-end justify-between h-32 gap-2 px-2 border-b border-slate-200/50">
+                   {dbStats.trends.map((t: any, idx: number) => {
+                     const maxVal = Math.max(...dbStats.trends.map((x: any) => x.generated), 1);
+                     const genHeight = (t.generated / maxVal) * 100;
+                     const collHeight = (t.collected / maxVal) * 100;
+                     
+                     return (
+                       <div key={idx} className="flex-1 flex flex-col justify-end items-center group relative cursor-default h-full">
+                          <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[9px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 shadow-xl pointer-events-none font-bold">
+                             {new Date(t.date).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}: R ${new Intl.NumberFormat('es-CO', { notation: 'compact' }).format(t.collected)}
+                          </div>
+                          
+                          <div className="w-full max-w-[12px] flex items-end gap-[1px] h-full justify-center">
+                             <div className="w-full bg-slate-200 rounded-t-sm" style={{ height: `${genHeight}%` }}></div>
+                             <div className="w-full bg-emerald-400 rounded-t-sm" style={{ height: `${collHeight}%` }}></div>
+                          </div>
+                       </div>
+                     )
+                   })}
                 </div>
               </div>
             )}

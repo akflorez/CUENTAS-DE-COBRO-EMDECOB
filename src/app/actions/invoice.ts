@@ -222,9 +222,19 @@ export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | 
     let itemsWithIntakeDate = 0;
     let onTimeCount = 0;
     let totalWithElaboracion = 0;
-
+    
     const dailyTrends: Record<string, { generated: number, collected: number }> = {};
-    const cohortMap: Record<string, { month: string, meta: number, collectedSameMonth: number, collectedLater: number, totalCollected: number, count: number }> = {};
+
+    // Cohort Analysis: Group by Gestion Period
+    const cohortMap: Record<string, { 
+      month: string, 
+      meta: number, 
+      collectedSameMonth: number, 
+      collectedLater: number, 
+      totalCollected: number, 
+      count: number,
+      recoveriesByMonth: Record<string, number> // Desglose: { "2026-04": 500000 }
+    }> = {};
 
     invoices.forEach((inv: any) => {
       const elabDate = inv.fechaElaboracion || inv.createdAt;
@@ -237,13 +247,29 @@ export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | 
       if (inv.gestionMes && inv.gestionAnio) {
         const cohortKey = `${inv.gestionAnio}-${inv.gestionMes.toString().padStart(2, '0')}`;
         if (!cohortMap[cohortKey]) {
-          cohortMap[cohortKey] = { month: cohortKey, meta: 0, collectedSameMonth: 0, collectedLater: 0, totalCollected: 0, count: 0 };
+          cohortMap[cohortKey] = { 
+            month: cohortKey, 
+            meta: 0, 
+            collectedSameMonth: 0, 
+            collectedLater: 0, 
+            totalCollected: 0, 
+            count: 0,
+            recoveriesByMonth: {} 
+          };
         }
         cohortMap[cohortKey].meta += inv.honorariosTotal;
         cohortMap[cohortKey].count += 1;
 
         if (inv.status === 'PAGADA' && inv.fechaPago) {
           const pDate = new Date(inv.fechaPago);
+          
+          // Vintage Tracking (Exactly when was this specific cohort paid?)
+          const pMonthKey = `${pDate.getFullYear()}-${(pDate.getMonth() + 1).toString().padStart(2, '0')}`;
+          if (!cohortMap[cohortKey].recoveriesByMonth[pMonthKey]) {
+            cohortMap[cohortKey].recoveriesByMonth[pMonthKey] = 0;
+          }
+          cohortMap[cohortKey].recoveriesByMonth[pMonthKey] += inv.montoPagado || 0;
+
           // Check if paid in the same management month or later
           const isSameMonth = pDate.getFullYear() === inv.gestionAnio && (pDate.getMonth() + 1) === inv.gestionMes;
           
