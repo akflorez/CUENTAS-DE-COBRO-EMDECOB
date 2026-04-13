@@ -559,6 +559,14 @@ export default function DashboardIndex() {
           </div>
         </div>
       )}
+      <div className="mt-12 pt-8 border-t border-slate-100 flex flex-col items-center gap-2 opacity-30">
+        <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
+          EMDECOB Dashboard v2.1.0
+        </div>
+        <div className="text-[9px] font-medium text-slate-300">
+          Build: 2026-04-13 | Commit Ident: ec4d187
+        </div>
+      </div>
     </div>
   );
 }
