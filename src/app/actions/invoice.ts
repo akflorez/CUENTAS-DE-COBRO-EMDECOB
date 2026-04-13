@@ -227,8 +227,9 @@ export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | 
       dailyTrends[dateKey].generated += inv.honorariosTotal;
 
       // Policy Compliance (by the 10th of next month of Gestion)
-      if (inv.gestionMes && inv.gestionAnio && inv.fechaElaboracion) {
-        const dElab = new Date(inv.fechaElaboracion);
+      const elabDate = inv.fechaElaboracion || inv.createdAt;
+      if (inv.gestionMes && inv.gestionAnio && elabDate) {
+        const dElab = new Date(elabDate);
         if (isNaN(dElab.getTime())) return;
         
         // Month after the Gestion period
