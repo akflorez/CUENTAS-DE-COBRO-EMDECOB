@@ -310,6 +310,10 @@ export default function DashboardIndex() {
                       const [y, m] = c.month.split("-");
                       const displayMonth = monthLabels[m];
 
+                      // Identify the primary elaboration month for this cohort
+                      const elabKeys = Object.entries(c.elabMonths || {}).sort((a: any, b: any) => (b[1] as number) - (a[1] as number));
+                      const primaryElabMonth = elabKeys.length > 0 ? monthLabels[elabKeys[0][0].split("-")[1]] : "";
+
                       // Multi-Segment Calculation
                       const recoveryEntries = Object.entries(c.recoveriesByMonth as Record<string, number>)
                         .sort((a, b) => a[0].localeCompare(b[0]));
@@ -326,7 +330,7 @@ export default function DashboardIndex() {
                            {/* Line Marker Eficacia */}
                            <div 
                              className="absolute left-1/2 -translate-x-1/2 w-6 h-6 bg-white border-[6px] border-emerald-500 rounded-full z-20 shadow-lg transition-all group-hover:scale-125"
-                             style={{ bottom: `${efficacy}%`, marginBottom: '-12px' }}
+                             style={{ bottom: `${efficacy}%`, marginBottom: '-8px' }}
                            >
                               <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-emerald-600 text-white text-[11px] font-black px-3 py-1.5 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all z-50 scale-75 group-hover:scale-100">
                                 {efficacy}% ÉXITO
@@ -374,16 +378,21 @@ export default function DashboardIndex() {
                            </div>
 
                            {/* Month Label Base */}
-                           <div className="mt-12 text-center group-hover:scale-110 transition-transform">
+                           <div className="mt-20 text-center group-hover:scale-110 transition-transform">
                               <p className="text-[12px] font-black text-slate-800 tracking-tight">{displayMonth}</p>
                               <p className="text-[10px] font-bold text-slate-300">{y}</p>
                            </div>
                            
                            {/* VINTAGE TOOLTIP */}
                            <div className="absolute -top-40 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-md p-6 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-slate-100 opacity-0 group-hover:opacity-100 transition-all z-50 pointer-events-none scale-50 group-hover:scale-100 min-w-[280px]">
-                              <div className="flex items-center gap-3 mb-5 border-b border-slate-100 pb-3">
-                                <Calendar className="w-5 h-5 text-blue-500" />
-                                <p className="text-[13px] font-black text-slate-800 uppercase tracking-tighter">Recaudo: Gestión {displayMonth}</p>
+                              <div className="flex flex-col gap-1 mb-5 border-b border-slate-100 pb-3">
+                                <div className="flex items-center gap-3">
+                                  <Calendar className="w-5 h-5 text-blue-500" />
+                                  <p className="text-[14px] font-black text-slate-800 uppercase tracking-tighter">Gestión {displayMonth}</p>
+                                </div>
+                                {primaryElabMonth && primaryElabMonth !== displayMonth && (
+                                  <p className="text-[9px] font-bold text-slate-400 pl-8 italic">Cuentas generadas en {primaryElabMonth}</p>
+                                )}
                               </div>
                               <div className="space-y-4">
                                 {Object.entries(c.recoveriesByMonth as Record<string, number>)
