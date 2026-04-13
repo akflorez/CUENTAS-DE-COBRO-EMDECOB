@@ -14,6 +14,8 @@ export default function UploadPage() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [fileDate, setFileDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [gestionMonth, setGestionMonth] = useState<number>(new Date().getMonth()); // 0-indexed for JS but we'll show 1-12
+  const [gestionYear, setGestionYear] = useState<number>(new Date().getFullYear());
 
   const processFile = (file: File) => {
     if (!file.name.match(/\.(xlsx|xls|csv)$/)) {
@@ -52,7 +54,9 @@ export default function UploadPage() {
           fileName: file.name,
           data: jsonData as any[],
           headers: columns,
-          referenceDate: fileDate ? new Date(fileDate) : undefined
+          referenceDate: fileDate ? new Date(fileDate) : undefined,
+          gestionMonth: (gestionMonth + 1), // Store as 1-indexed
+          gestionYear: gestionYear
         }]);
         
         setIsLoading(false);
@@ -153,17 +157,52 @@ export default function UploadPage() {
         </div>
 
         {filesData.length === 0 && (
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 p-6 bg-amber-50 rounded-xl border border-amber-100 mb-8 animate-in fade-in zoom-in duration-500">
-            <div className="flex items-center gap-3">
-              <CalendarDays className="w-5 h-5 text-amber-600" />
-              <p className="text-sm font-medium text-amber-800">¿Cuándo se envió/elaboró este archivo?</p>
+          <div className="flex flex-col gap-6 p-8 bg-indigo-50/50 rounded-2xl border border-indigo-100 mb-8 animate-in fade-in zoom-in duration-500">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Reference Date */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-indigo-700">
+                  <CalendarDays className="w-5 h-5" />
+                  <p className="font-bold text-sm uppercase tracking-wide">¿Cuándo se envió este archivo?</p>
+                </div>
+                <input 
+                  type="date" 
+                  value={fileDate}
+                  onChange={(e) => setFileDate(e.target.value)}
+                  className="w-full bg-white border border-indigo-200 rounded-xl px-4 py-3 text-lg font-bold text-indigo-900 focus:ring-4 focus:ring-indigo-500/10 outline-none shadow-sm transition-all"
+                />
+                <p className="text-xs text-indigo-500 font-medium">Esta fecha se usará para el gráfico y la política del día 10.</p>
+              </div>
+
+              {/* Gestión Selector */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-indigo-700">
+                  <Settings className="w-5 h-5" />
+                  <p className="font-bold text-sm uppercase tracking-wide">¿De qué mes es este reporte?</p>
+                </div>
+                <div className="flex gap-2">
+                  <select 
+                    value={gestionMonth}
+                    onChange={(e) => setGestionMonth(parseInt(e.target.value))}
+                    className="flex-grow bg-white border border-indigo-200 rounded-xl px-4 py-3 text-lg font-bold text-indigo-900 focus:ring-4 focus:ring-indigo-500/10 outline-none shadow-sm transition-all appearance-none"
+                  >
+                    {["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"].map((m, i) => (
+                      <option key={i} value={i}>{m}</option>
+                    ))}
+                  </select>
+                  <select 
+                    value={gestionYear}
+                    onChange={(e) => setGestionYear(parseInt(e.target.value))}
+                    className="w-32 bg-white border border-indigo-200 rounded-xl px-4 py-3 text-lg font-bold text-indigo-900 focus:ring-4 focus:ring-indigo-500/10 outline-none shadow-sm transition-all appearance-none"
+                  >
+                    {[2024, 2025, 2026, 2027].map(y => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
+                  </select>
+                </div>
+                <p className="text-xs text-indigo-500 font-medium">Esto define si es "Gestión Marzo", "Gestión Abril", etc.</p>
+              </div>
             </div>
-            <input 
-              type="date" 
-              value={fileDate}
-              onChange={(e) => setFileDate(e.target.value)}
-              className="bg-white border border-amber-200 rounded-lg px-4 py-2 text-sm font-bold text-amber-900 focus:ring-2 focus:ring-amber-500 outline-none shadow-sm"
-            />
           </div>
         )}
 
@@ -197,7 +236,7 @@ export default function UploadPage() {
                     <div className="truncate">
                       <p className="text-sm font-medium text-slate-700 truncate">{file.fileName}</p>
                       <p className="text-xs text-slate-500">
-                        {file.data.length} registros {file.referenceDate ? `• Ref: ${file.referenceDate.toLocaleDateString('es-CO')}` : ''}
+                        {file.data.length} registros • <strong>Gestión {file.gestionMonth}/{file.gestionYear}</strong>
                       </p>
                     </div>
                   </div>

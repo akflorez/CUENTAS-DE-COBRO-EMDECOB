@@ -61,6 +61,9 @@ const parseNumber = (val: any): number => {
 
 export function mapRawRecord(row: any) {
   const fileRefDate = row._fileReferenceDate;
+  const fileRefMonth = row._fileGestionMonth;
+  const fileRefYear = row._fileGestionYear;
+
   return {
     nombre: findCol(row, "NOMBRE", "NOMBRE ", "DEUDOR"),
     cedula: findCol(row, "CEDULA", "CEDULA ", "NIT", "IDENTIFICACION"),
@@ -119,14 +122,16 @@ export function groupRecords(rawRows: any[], startingConsecutive: number = 1): M
       // granTotal = solo lo que se cobra: Honorarios + IVA
       existing.granTotal += item.honorarios + item.iva;
     } else {
-      // Determinamos el mes de gestión basado en la fecha de pago
-      let gMes: number | undefined;
-      let gAnio: number | undefined;
+      // Determinamos el mes de gestión: prioridad selección manual, luego fecha de pago
+      let gMes: number = raw._fileGestionMonth;
+      let gAnio: number = raw._fileGestionYear;
       
-      const dPago = parseExcelDate(mapped.fechaPago);
-      if (dPago) {
-        gMes = dPago.getMonth() + 1;
-        gAnio = dPago.getFullYear();
+      if (!gMes || !gAnio) {
+        const dPago = parseExcelDate(mapped.fechaPago);
+        if (dPago) {
+          gMes = gMes || (dPago.getMonth() + 1);
+          gAnio = gAnio || dPago.getFullYear();
+        }
       }
 
       grouped.set(conjunto, {

@@ -221,13 +221,13 @@ export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | 
     const dailyTrends: Record<string, { generated: number, collected: number }> = {};
 
     invoices.forEach((inv: any) => {
-      // Trends by day created
-      const dateKey = inv.createdAt.toISOString().split('T')[0];
+      // Trends by date elaborated/sent (fallback to createdAt)
+      const elabDate = inv.fechaElaboracion || inv.createdAt;
+      const dateKey = new Date(elabDate).toISOString().split('T')[0];
       if (!dailyTrends[dateKey]) dailyTrends[dateKey] = { generated: 0, collected: 0 };
       dailyTrends[dateKey].generated += inv.honorariosTotal;
 
       // Policy Compliance (by the 10th of next month of Gestion)
-      const elabDate = inv.fechaElaboracion || inv.createdAt;
       if (inv.gestionMes && inv.gestionAnio && elabDate) {
         const dElab = new Date(elabDate);
         if (isNaN(dElab.getTime())) return;

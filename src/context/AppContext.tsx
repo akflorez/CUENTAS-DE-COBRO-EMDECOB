@@ -12,6 +12,8 @@ export type FileData = {
   data: BillingData[];
   headers: string[];
   referenceDate?: Date;
+  gestionMonth?: number;
+  gestionYear?: number;
 };
 
 export type AppContextType = {
@@ -39,9 +41,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [directoryData, setDirectoryData] = useState<any[]>([]);
   const [startingConsecutive, setStartingConsecutive] = useState<number>(1);
 
-  // Derivamos la data unificada e inyectamos la fecha de referencia si existe
+  // Derivamos la data unificada e inyectamos la fecha de referencia y gestión si existe
   const excelData = filesData.flatMap(file => 
-    file.data.map(row => ({ ...row, _fileReferenceDate: file.referenceDate }))
+    file.data.map(row => ({ 
+      ...row, 
+      _fileReferenceDate: file.referenceDate,
+      _fileGestionMonth: file.gestionMonth,
+      _fileGestionYear: file.gestionYear
+    }))
   );
 
   const clearData = () => {
