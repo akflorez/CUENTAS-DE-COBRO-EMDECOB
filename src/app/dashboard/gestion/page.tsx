@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import { getInvoices, updateInvoiceStatus, getConjuntos } from "@/app/actions/invoice";
-import { ListChecks, Clock, CheckCircle2, AlertCircle, Building2, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { ListChecks, Clock, CheckCircle2, AlertCircle, Building2, ChevronLeft, ChevronRight, Search, X } from "lucide-react";
+import SearchableSelect from "@/components/SearchableSelect";
 
 export default function GestionPage() {
   const [invoices, setInvoices] = useState<any[]>([]);
@@ -135,27 +136,19 @@ export default function GestionPage() {
             </p>
           </div>
           
-          <div className="flex items-center gap-3 bg-white p-2 rounded-xl border border-slate-200 shadow-sm">
-            <div className="flex items-center gap-2 px-3">
-              <Building2 className="w-4 h-4 text-slate-400" />
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Filtrar por Conjunto:</span>
-            </div>
-            <select 
-              className="text-xs font-bold bg-slate-50 border-none rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all cursor-pointer text-slate-700"
+          <div className="flex items-center gap-3">
+            <SearchableSelect 
+              label="Filtrar por Conjunto"
+              options={conjuntos}
               value={dbConjunto}
-              onChange={(e) => { setDbConjunto(e.target.value); setPage(1); }}
-            >
-              <option value="Todos">Todos los Conjuntos</option>
-              {conjuntos.map(c => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
+              onChange={(val) => { setDbConjunto(val); setPage(1); }}
+            />
             {dbConjunto !== "Todos" && (
               <button 
                 onClick={() => { setDbConjunto("Todos"); setPage(1); }}
                 className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
               >
-                <Clock className="w-4 h-4 rotate-180" />
+                <X className="w-4 h-4" />
               </button>
             )}
           </div>

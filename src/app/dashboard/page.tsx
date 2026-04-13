@@ -8,7 +8,8 @@ import { groupRecords } from "@/lib/mapper";
 import { Users, FileSpreadsheet, Building2, ExternalLink, CalendarDays, Clock, CheckCircle2, AlertCircle, Scale } from "lucide-react";
 import Link from "next/link";
 import { getInvoiceStats, getConjuntos } from "@/app/actions/invoice";
-import { TrendingUp, BarChart3, Timer } from "lucide-react";
+import { TrendingUp, BarChart3, Timer, X } from "lucide-react";
+import SearchableSelect from "@/components/SearchableSelect";
 
 export default function DashboardIndex() {
   const router = useRouter();
@@ -153,16 +154,12 @@ export default function DashboardIndex() {
             <div className="flex items-center gap-2 px-3 border-l border-slate-100 ml-2">
               <Building2 className="w-4 h-4 text-slate-400" />
             </div>
-            <select 
-              className="text-xs font-bold bg-slate-50 border-none rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all cursor-pointer text-slate-600"
+            <SearchableSelect 
+              label="Filtrar por Conjunto"
+              options={conjuntos}
               value={dbConjunto}
-              onChange={(e) => setDbConjunto(e.target.value)}
-            >
-              <option value="Todos text-slate-400">Todos los Conjuntos</option>
-              {conjuntos.map(c => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
+              onChange={(val) => setDbConjunto(val)}
+            />
 
             {(dbStartDate || dbEndDate || dbConjunto !== "Todos" || dbMonth) && (
               <button 
