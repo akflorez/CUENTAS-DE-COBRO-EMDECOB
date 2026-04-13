@@ -3,6 +3,7 @@
 import { getPrisma } from '@/lib/prisma'
 import { MappedRecord } from '@/lib/mapper'
 import { revalidatePath } from 'next/cache'
+import { parseExcelDate } from '@/lib/utils'
 
 export async function saveInvoiceRecord(data: MappedRecord) {
   console.log('--- saveInvoiceRecord called for:', data.consecutivo, '---');
@@ -31,9 +32,9 @@ export async function saveInvoiceRecord(data: MappedRecord) {
         granTotal: data.granTotal,
         gestionMes: data.gestionMes,
         gestionAnio: data.gestionAnio,
-        fechaElaboracion: data.items[0]?.fechaElaboracion ? new Date(data.items[0].fechaElaboracion as string) : null,
-        fechaIngresoPorte: data.items[0]?.fechaIngresoPorte ? new Date(data.items[0].fechaIngresoPorte as string) : null,
-        fechaPago: data.items[0]?.fechaPago ? new Date(data.items[0].fechaPago as string) : null,
+        fechaElaboracion: parseExcelDate(data.items[0]?.fechaElaboracion),
+        fechaIngresoPorte: parseExcelDate(data.items[0]?.fechaIngresoPorte),
+        fechaPago: parseExcelDate(data.items[0]?.fechaPago),
         items: {
           create: data.items.map(item => ({
             fechaPago: item.fechaPago?.toString(),
@@ -225,13 +226,14 @@ export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | 
       if (!dailyTrends[dateKey]) dailyTrends[dateKey] = { generated: 0, collected: 0 };
       dailyTrends[dateKey].generated += inv.honorariosTotal;
 
-      // Policy Compliance (by the 10th of next month)
-      if (inv.fechaPago && inv.fechaElaboracion) {
-        const dPago = new Date(inv.fechaPago);
+      // Policy Compliance (by the 10th of next month of Gestion)
+      if (inv.gestionMes && inv.gestionAnio && inv.fechaElaboracion) {
         const dElab = new Date(inv.fechaElaboracion);
+        if (isNaN(dElab.getTime())) return;
         
-        // Month after payment
-        const deadline = new Date(dPago.getFullYear(), dPago.getMonth() + 1, 10);
+        // Month after the Gestion period
+        const deadline = new Date(inv.gestionAnio, inv.gestionMes, 10); 
+        // JS Date: month index 3 is April. If gestionMes is 3 (March), then new Date(2026, 3, 10) is April 10th.
         
         if (dElab <= deadline) {
           onTimeCount++;
