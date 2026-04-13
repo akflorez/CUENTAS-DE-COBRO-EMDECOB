@@ -80,6 +80,11 @@ export function mapRawRecord(row: any) {
     fechaElaboracion: findCol(row, "FECHA ELABORACION", "FECHA CREACION", "FECHA CUENTA DE COBRO", "FECHA DE CREACION", "FECHA DE ENVIO", "FECHA ENVIO") || fileRefDate,
     estadoCobro: findCol(row, "CUENTA DE COBRO", "CUENTA DE COBRO "),
     asesor: findCol(row, "ASESOR", "ASESOR ", "ASESORA"),
+    
+    // Extracción de Gestión (Directo del archivo)
+    archivoGestionMes: findCol(row, "GESTION", "MES GESTION", "CICLO", "MES GESTIÓN"),
+    archivoGestionAnio: findCol(row, "ANIO GESTION", "AÑO GESTION", "AÑO", "ANIO"),
+
     originalRow: row
   };
 }
@@ -122,9 +127,9 @@ export function groupRecords(rawRows: any[], startingConsecutive: number = 1): M
       // granTotal = solo lo que se cobra: Honorarios + IVA
       existing.granTotal += item.honorarios + item.iva;
     } else {
-      // Determinamos el mes de gestión: prioridad selección manual, luego fecha de pago
-      let gMes: number = raw._fileGestionMonth;
-      let gAnio: number = raw._fileGestionYear;
+      // Determinamos el mes de gestión: prioridad columna archivo, luego selección manual, luego fecha de pago
+      let gMes: number = mapped.archivoGestionMes ? parseInt(String(mapped.archivoGestionMes)) : raw._fileGestionMonth;
+      let gAnio: number = mapped.archivoGestionAnio ? parseInt(String(mapped.archivoGestionAnio)) : raw._fileGestionYear;
       
       if (!gMes || !gAnio) {
         const dPago = parseExcelDate(mapped.fechaPago);

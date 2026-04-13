@@ -233,7 +233,8 @@ export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | 
       collectedLater: number, 
       totalCollected: number, 
       count: number,
-      recoveriesByMonth: Record<string, number> // Desglose: { "2026-04": 500000 }
+      recoveriesByMonth: Record<string, number>,
+      elabMonths: Record<string, number> // { "2026-04": 15 } - tracking when invoices were sent
     }> = {};
 
     invoices.forEach((inv: any) => {
@@ -256,11 +257,16 @@ export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | 
           collectedLater: 0, 
           totalCollected: 0, 
           count: 0,
-          recoveriesByMonth: {} 
+          recoveriesByMonth: {},
+          elabMonths: {}
         };
       }
       cohortMap[cohortKey].meta += inv.honorariosTotal;
       cohortMap[cohortKey].count += 1;
+
+      // Track when these were sent (elaboration)
+      const elabKey = `${elabDateObj.getFullYear()}-${(elabDateObj.getMonth() + 1).toString().padStart(2, '0')}`;
+      cohortMap[cohortKey].elabMonths[elabKey] = (cohortMap[cohortKey].elabMonths[elabKey] || 0) + 1;
 
       if ((inv.status === 'PAGADA' || (inv.montoPagado && inv.montoPagado > 0)) && inv.fechaPago) {
         const pDate = new Date(inv.fechaPago);

@@ -441,12 +441,27 @@ export default function DashboardIndex() {
                   <table className="w-full text-left border-collapse min-w-[1000px]">
                     <thead>
                       <tr className="bg-slate-50/80 border-b border-slate-100">
-                        <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-100/30 sticky left-0 z-10 backdrop-blur-sm">Año</th>
-                        <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-100/30 sticky left-[100px] z-10 backdrop-blur-sm">Mes</th>
+                        <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-100/30 sticky left-0 z-10 backdrop-blur-sm">Mes de Gestión</th>
                         <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-widest border-r border-slate-100 text-center">Cuentas</th>
-                        {[1,2,3,4,5,6].map(m => (
-                          <th key={m} className="p-5 text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">MES {m}</th>
-                        ))}
+                        {(() => {
+                          const monthLabels: Record<string, string> = {
+                            "01": "ENERO", "02": "FEBRERO", "03": "MARZO", "04": "ABRIL", "05": "MAYO", "06": "JUNIO",
+                            "07": "JULIO", "08": "AGOSTO", "09": "SEPTIEMBRE", "10": "OCTUBRE", "11": "NOVIEMBRE", "12": "DICIEMBRE"
+                          };
+                          // Create headers for the next 8 months starting from the earliest cohort
+                          const sortedCohorts = [...dbStats.cohortHistory].sort((a: any, b: any) => a.month.localeCompare(b.month));
+                          if (sortedCohorts.length === 0) return null;
+                          const [y, m] = sortedCohorts[0].month.split("-");
+                          const headers = [];
+                          for (let i = 0; i < 8; i++) {
+                            const d = new Date(parseInt(y), parseInt(m) - 1 + i, 1);
+                            const key = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}`;
+                            headers.push({ key, label: monthLabels[(d.getMonth() + 1).toString().padStart(2, '0')] });
+                          }
+                          return headers.map(h => (
+                            <th key={h.key} className="p-5 text-[10px] font-black text-slate-500 uppercase tracking-widest text-center min-w-[100px]">{h.label}</th>
+                          ));
+                        })()}
                         <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 text-center border-l border-slate-100 italic">Pend.</th>
                       </tr>
                     </thead>
@@ -462,39 +477,52 @@ export default function DashboardIndex() {
                         const totalRecaudado = c.totalCollected;
                         const pendingAmount = Math.max(0, c.meta - totalRecaudado);
 
+                        // Identify the primary elaboration month for this cohort
+                        const elabKeys = Object.entries(c.elabMonths || {}).sort((a: any, b: any) => b[1] - a[1]);
+                        const primaryElabMonth = elabKeys.length > 0 ? monthLabels[elabKeys[0][0].split("-")[1]] : "";
+
                         return (
                           <tr key={ridx} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors group">
-                            <td className="p-5 text-[11px] font-black text-slate-400 group-hover:text-slate-600 sticky left-0 bg-white z-10 group-hover:bg-slate-50 transition-colors">{y}</td>
-                            <td className="p-5 text-[11px] font-black text-slate-800 sticky left-[100px] bg-white z-10 group-hover:bg-slate-50 transition-colors">{monthLabels[m]}</td>
+                            <td className="p-5 sticky left-0 bg-white z-10 group-hover:bg-slate-50 transition-colors">
+                               <p className="text-[12px] font-black text-slate-800 leading-none">{monthLabels[m]} {y}</p>
+                               {primaryElabMonth && primaryElabMonth !== monthLabels[m] && (
+                                 <p className="text-[8px] font-bold text-slate-300 uppercase mt-1">Env. {primaryElabMonth}</p>
+                               )}
+                            </td>
                             <td className="p-5 text-[11px] font-bold text-slate-400 text-center border-r border-slate-50">{c.count}</td>
                             
-                            {[0,1,2,3,4,5].map(offset => {
-                              // Calculate payment month key
-                              const d = new Date(parseInt(y), parseInt(m) - 1 + offset, 1);
-                              const pKey = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}`;
-                              const amount = recoveries[pKey] || 0;
-                              const p = c.meta > 0 ? (amount / c.meta) * 100 : 0;
-                              
-                              // Heatmap scale
-                              let heatColor = "";
-                              const isMoney = matrixMode === 'money';
-                              
-                              if (p > 30) heatColor = isMoney ? "bg-blue-600 text-white" : "bg-rose-600 text-white";
-                              else if (p > 15) heatColor = isMoney ? "bg-blue-400 text-white" : "bg-rose-400 text-white";
-                              else if (p > 5) heatColor = isMoney ? "bg-blue-100 text-blue-800" : "bg-rose-50 text-rose-800";
-                              else if (p > 0) heatColor = isMoney ? "bg-blue-50 text-blue-600" : "bg-rose-50/50 text-rose-600";
-                              else heatColor = "text-slate-200";
+                            {(() => {
+                               const sortedCohorts = [...dbStats.cohortHistory].sort((a: any, b: any) => a.month.localeCompare(b.month));
+                               const [startY, startM] = sortedCohorts[0].month.split("-");
+                               const cells = [];
+                               for (let i = 0; i < 8; i++) {
+                                 const d = new Date(parseInt(startY), parseInt(startM) - 1 + i, 1);
+                                 const pKey = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}`;
+                                 const amount = recoveries[pKey] || 0;
+                                 const p = c.meta > 0 ? (amount / c.meta) * 100 : 0;
+                                 
+                                 // Heatmap scale
+                                 let heatColor = "";
+                                 const isMoney = matrixMode === 'money';
+                                 
+                                 if (p > 30) heatColor = isMoney ? "bg-blue-600 text-white" : "bg-rose-600 text-white";
+                                 else if (p > 15) heatColor = isMoney ? "bg-blue-400 text-white" : "bg-rose-400 text-white";
+                                 else if (p > 5) heatColor = isMoney ? "bg-blue-100 text-blue-800" : "bg-rose-50 text-rose-800";
+                                 else if (p > 0) heatColor = isMoney ? "bg-blue-50 text-blue-600" : "bg-rose-50/50 text-rose-600";
+                                 else heatColor = "text-slate-200";
 
-                              return (
-                                <td key={offset} className={`p-4 text-[10px] font-black text-center transition-all ${heatColor} border border-white/40 shadow-sm`}>
-                                   {amount > 0 ? (
-                                      matrixMode === 'money' ? 
-                                        new Intl.NumberFormat('es-CO', { notation: 'compact' }).format(amount) : 
-                                        `${p.toFixed(1)}%`
-                                   ) : "-"}
-                                </td>
-                              );
-                            })}
+                                 cells.push(
+                                  <td key={i} className={`p-4 text-[10px] font-black text-center transition-all ${heatColor} border border-white/40 shadow-sm whitespace-nowrap`}>
+                                     {amount > 0 ? (
+                                        matrixMode === 'money' ? 
+                                          new Intl.NumberFormat('es-CO', { notation: 'compact' }).format(amount) : 
+                                          `${p.toFixed(1)}%`
+                                     ) : "-"}
+                                  </td>
+                                 );
+                               }
+                               return cells;
+                            })()}
 
                             <td className="p-5 text-[10px] font-black text-center bg-slate-50/50 text-slate-300 italic border-l border-slate-100">
                                {matrixMode === 'money' ? 
