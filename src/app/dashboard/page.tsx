@@ -195,7 +195,7 @@ export default function DashboardIndex() {
                 <Scale className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Facturado (Meta)</p>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">Honorarios Generados</p>
                 <h3 className="text-xl font-black text-slate-800">
                   {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(dbStats.totalMetaHonorarios)}
                 </h3>
@@ -315,9 +315,9 @@ export default function DashboardIndex() {
                   <div>
                     <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
                        <Zap className="w-5 h-5 text-amber-500 fill-amber-500" />
-                       Análisis de Rendimiento por Ciclo (Cohortes)
+                       Rendimiento por Gestión (Cosechas)
                     </h3>
-                    <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest mt-1">Comparativa de Meta vs Recaudo Realizado para cada Mes de Gestión</p>
+                    <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest mt-1">Comparativa de Honorarios vs Recaudos por Mes de Gestión</p>
                   </div>
                   
                   <div className="flex flex-wrap items-center gap-4 bg-slate-50 p-3 rounded-xl border border-slate-100">
@@ -368,12 +368,14 @@ export default function DashboardIndex() {
                       const pendingAmount = Math.max(0, c.meta - totalRecaudado);
                       const pendingP = (pendingAmount / c.meta) * 100;
 
-                      // Color Palette for aging segments
+                      // Color Palette for aging segments (Deep blue to teal)
                       const segmentColors = [
-                        "bg-blue-900", // Mes 0
-                        "bg-blue-600", // Mes +1
-                        "bg-blue-400", // Mes +2
-                        "bg-cyan-400", // Mes +3+
+                        "bg-blue-900", // Mismo mes
+                        "bg-blue-600",
+                        "bg-blue-400",
+                        "bg-cyan-500",
+                        "bg-cyan-400",
+                        "bg-teal-400",
                       ];
 
                       return (
@@ -423,12 +425,12 @@ export default function DashboardIndex() {
                                 {pendingP > 15 && <span className="text-[9px] text-slate-400 font-extrabold rotate-90">{Math.round(pendingP)}% <span className="text-[7px]">PEND</span></span>}
                               </div>
 
-                              {/* Meta Label above bar */}
+                              {/* Valor total arriba de la barra */}
                               <div className="absolute -top-14 w-full text-center">
                                 <p className="text-[14px] font-black text-slate-800 leading-tight">
                                   {new Intl.NumberFormat('es-CO', { notation: 'compact' }).format(c.meta)}
                                 </p>
-                                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">META TOTAL</p>
+                                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">TOTAL HONORARIOS</p>
                               </div>
                            </div>
 

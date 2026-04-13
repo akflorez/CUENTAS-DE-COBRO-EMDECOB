@@ -260,7 +260,7 @@ export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | 
         cohortMap[cohortKey].meta += inv.honorariosTotal;
         cohortMap[cohortKey].count += 1;
 
-        if (inv.status === 'PAGADA' && inv.fechaPago) {
+        if ((inv.status === 'PAGADA' || (inv.montoPagado && inv.montoPagado > 0)) && inv.fechaPago) {
           const pDate = new Date(inv.fechaPago);
           
           // Vintage Tracking (Exactly when was this specific cohort paid?)
@@ -336,7 +336,7 @@ export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | 
 
     stats.cohortHistory = Object.values(cohortMap)
       .sort((a, b) => a.month.localeCompare(b.month))
-      .slice(-6);
+      .slice(-12);
 
     stats.trends = Object.entries(dailyTrends)
       .map(([date, vals]) => ({ date, ...vals }))
