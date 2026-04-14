@@ -451,6 +451,7 @@ export default function DashboardIndex() {
                     <thead>
                       <tr className="bg-slate-50/80 border-b border-slate-100">
                         <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-100/30 sticky left-0 z-10 backdrop-blur-sm">Mes de Gestión</th>
+                        <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-100/30 sticky left-[120px] z-10 backdrop-blur-sm text-center">Mes de Generación</th>
                         <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-widest border-r border-slate-100 text-center">Cuentas</th>
                         {(() => {
                           const monthLabels: Record<string, string> = {
@@ -487,16 +488,16 @@ export default function DashboardIndex() {
                         const pendingAmount = Math.max(0, c.meta - totalRecaudado);
 
                         // Identify the primary elaboration month for this cohort
-                        const elabKeys = Object.entries(c.elabMonths || {}).sort((a: any, b: any) => b[1] - a[1]);
-                        const primaryElabMonth = elabKeys.length > 0 ? monthLabels[elabKeys[0][0].split("-")[1]] : "";
+                        const elabKeys = Object.entries(c.elabMonths || {}).sort((a: any, b: any) => (b[1] as number) - (a[1] as number));
+                        const primaryElabMonth = elabKeys.length > 0 ? monthLabels[elabKeys[0][0].split("-")[1]] : "-";
 
                         return (
                           <tr key={ridx} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors group">
                             <td className="p-5 sticky left-0 bg-white z-10 group-hover:bg-slate-50 transition-colors">
                                <p className="text-[12px] font-black text-slate-800 leading-none">{monthLabels[m]} {y}</p>
-                               {primaryElabMonth && primaryElabMonth !== monthLabels[m] && (
-                                 <p className="text-[8px] font-bold text-slate-300 uppercase mt-1">Env. {primaryElabMonth}</p>
-                               )}
+                            </td>
+                            <td className="p-5 sticky left-[120px] bg-white z-10 group-hover:bg-slate-50 transition-colors text-center border-r border-slate-50">
+                               <p className={`text-[11px] font-bold ${primaryElabMonth !== monthLabels[m] ? 'text-amber-500' : 'text-slate-400'} uppercase`}>{primaryElabMonth}</p>
                             </td>
                             <td className="p-5 text-[11px] font-bold text-slate-400 text-center border-r border-slate-50">{c.count}</td>
                             
