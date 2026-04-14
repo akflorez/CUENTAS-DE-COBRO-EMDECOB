@@ -16,7 +16,12 @@ export default function LoginPage() {
     setIsLoading(true);
     setError('');
 
-    if (username.trim() === 'PROPIEDAD HORIZONTAL' && password === '292509') {
+    const user = username.trim().toUpperCase();
+    const isValidProph = user === 'PROPIEDAD HORIZONTAL' && password === '292509';
+    const isValidEmdecob = user === 'EMDECOB' && password === '270227';
+    const isValidTesoreria = user === 'TESORERIA' && password === '261424';
+
+    if (isValidProph || isValidEmdecob || isValidTesoreria) {
       setTimeout(() => {
         router.push('/dashboard/upload');
       }, 800);
