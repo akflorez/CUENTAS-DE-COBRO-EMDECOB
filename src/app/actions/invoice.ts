@@ -16,6 +16,14 @@ export async function saveInvoiceRecord(data: MappedRecord) {
     });
 
     if (existing) {
+      // Si ya existe, actualizamos el mes de gestión si viene uno nuevo
+      if (data.gestionMes && data.gestionAnio) {
+        await prisma.invoice.update({
+          where: { consecutivo: data.consecutivo },
+          data: { gestionMes: data.gestionMes, gestionAnio: data.gestionAnio }
+        });
+        return JSON.parse(JSON.stringify({ success: true, updated: true, message: 'Gestión actualizada' }));
+      }
       return JSON.parse(JSON.stringify({ success: false, error: 'Invoice already exists' }));
     }
 
