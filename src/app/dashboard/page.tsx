@@ -450,8 +450,9 @@ export default function DashboardIndex() {
                   <table className="w-full text-left border-collapse min-w-[1000px]">
                     <thead>
                       <tr className="bg-slate-50/80 border-b border-slate-100">
-                        <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-100/30 sticky left-0 z-10 backdrop-blur-sm">Mes de Gestión</th>
-                        <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-100/30 sticky left-[120px] z-10 backdrop-blur-sm text-center">Mes de Generación</th>
+                        <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-100/30 sticky left-0 z-10 backdrop-blur-sm">Año</th>
+                        <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-100/30 sticky left-[60px] z-10 backdrop-blur-sm">Mes de Gestión</th>
+                        <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-100/30 sticky left-[180px] z-10 backdrop-blur-sm text-center">Mes de Generación</th>
                         <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-widest border-r border-slate-100 text-center">Cuentas</th>
                         {(() => {
                           const monthLabels: Record<string, string> = {
@@ -492,14 +493,17 @@ export default function DashboardIndex() {
                         const primaryElabMonth = elabKeys.length > 0 ? monthLabels[elabKeys[0][0].split("-")[1]] : "-";
 
                         return (
-                          <tr key={ridx} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors group">
-                            <td className="p-5 sticky left-0 bg-white z-10 group-hover:bg-slate-50 transition-colors">
-                               <p className="text-[12px] font-black text-slate-800 leading-none">{monthLabels[m]} {y}</p>
+                          <tr key={ridx} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors group text-slate-700">
+                            <td className="p-5 sticky left-0 bg-white z-10 group-hover:bg-slate-50 transition-colors text-[11px] font-medium text-slate-500">
+                               {y}
                             </td>
-                            <td className="p-5 sticky left-[120px] bg-white z-10 group-hover:bg-slate-50 transition-colors text-center border-r border-slate-50">
-                               <p className={`text-[11px] font-bold ${primaryElabMonth !== monthLabels[m] ? 'text-amber-500' : 'text-slate-400'} uppercase`}>{primaryElabMonth}</p>
+                            <td className="p-5 sticky left-[60px] bg-white z-10 group-hover:bg-slate-50 transition-colors">
+                               <p className="text-[12px] font-black text-slate-800 leading-none">{monthLabels[m]}</p>
                             </td>
-                            <td className="p-5 text-[11px] font-bold text-slate-400 text-center border-r border-slate-50">{c.count}</td>
+                            <td className="p-5 sticky left-[180px] bg-white z-10 group-hover:bg-slate-50 transition-colors text-center border-r border-slate-50">
+                               <p className={`text-[12px] font-black ${primaryElabMonth !== monthLabels[m] ? 'text-slate-800' : 'text-slate-400'} uppercase`}>{primaryElabMonth}</p>
+                            </td>
+                            <td className="p-5 text-[11px] font-bold text-blue-500/60 text-center border-r border-slate-50">{c.count}</td>
                             
                             {(() => {
                                const sortedCohorts = [...dbStats.cohortHistory].sort((a: any, b: any) => a.month.localeCompare(b.month));
