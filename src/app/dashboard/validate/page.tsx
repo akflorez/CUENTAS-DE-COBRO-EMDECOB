@@ -224,6 +224,7 @@ export default function ValidatePage() {
               <tr>
                 <th scope="col" className="px-6 py-4">Estado</th>
                 <th scope="col" className="px-6 py-4">Conjunto / Cartera</th>
+                <th scope="col" className="px-6 py-4 text-center">Gestión</th>
                 <th scope="col" className="px-6 py-4">Asesor</th>
                 <th scope="col" className="px-6 py-4">Registros</th>
                 <th scope="col" className="px-6 py-4 text-right">Monto Total</th>
@@ -247,6 +248,28 @@ export default function ValidatePage() {
                   </td>
                   <td className="px-6 py-4 font-medium text-slate-900">
                     {item.mapped.conjuntoNombre || <span className="text-slate-400 italic">No definido</span>}
+                  </td>
+                  <td className="px-6 py-4 text-center">
+                    {(() => {
+                        const monthLabels: Record<string, string> = {
+                          "1": "MARZO", "2": "FEBRERO", "3": "MARZO", "4": "ABRIL", "5": "MAYO", "6": "JUNIO",
+                          "7": "JULIO", "8": "AGOSTO", "9": "SEPTIEMBRE", "10": "OCTUBRE", "11": "NOVIEMBRE", "12": "DICIEMBRE",
+                          // Fallback handling for 0-indexed or 1-indexed just in case
+                          "0": "ENERO"
+                        };
+                        const mStr = String(item.mapped.gestionMes);
+                        // Correction for months label keys
+                        const monthsMap: Record<string, string> = {
+                            "1":"ENERO", "2":"FEBRERO", "3":"MARZO", "4":"ABRIL", "5":"MAYO", "6":"JUNIO",
+                            "7":"JULIO", "8":"AGOSTO", "9":"SEPTIEMBRE", "10":"OCTUBRE", "11":"NOVIEMBRE", "12":"DICIEMBRE"
+                        };
+                        return (
+                          <div className="flex flex-col items-center">
+                            <span className="text-[11px] font-black text-slate-800">{monthsMap[mStr] || "---"}</span>
+                            <span className="text-[9px] font-bold text-slate-400">{item.mapped.gestionAnio}</span>
+                          </div>
+                        );
+                    })()}
                   </td>
                   <td className="px-6 py-4 text-slate-500">
                     {item.mapped.asesor || "-"}
