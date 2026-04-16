@@ -249,6 +249,10 @@ export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | 
       const elabDate = inv.fechaElaboracion || inv.createdAt;
       const elabDateObj = new Date(elabDate);
       
+      // Calculate the portion of the payment that corresponds to fees (Honorarios vs Total with IVA)
+      const feesRatio = inv.granTotal > 0 ? (inv.honorariosTotal / inv.granTotal) : 1;
+      const feesPaid = (inv.montoPagado || 0) * feesRatio;
+      
       // Global snapshot filters
       const isInRange = (!startDate || elabDateObj >= new Date(startDate)) && (!endDate || elabDateObj <= new Date(endDate));
 
@@ -286,17 +290,17 @@ export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | 
         if (!cohortMap[cohortKey].recoveriesByMonth[pMonthKey]) {
           cohortMap[cohortKey].recoveriesByMonth[pMonthKey] = 0;
         }
-        cohortMap[cohortKey].recoveriesByMonth[pMonthKey] += inv.montoPagado || 0;
+        cohortMap[cohortKey].recoveriesByMonth[pMonthKey] += feesPaid;
 
         // Check if paid in the same management month or later
         const isSameMonth = pDate.getFullYear() === gAnio && (pDate.getMonth() + 1) === gMes;
         
         if (isSameMonth) {
-          cohortMap[cohortKey].collectedSameMonth += inv.montoPagado || 0;
+          cohortMap[cohortKey].collectedSameMonth += feesPaid;
         } else {
-          cohortMap[cohortKey].collectedLater += inv.montoPagado || 0;
+          cohortMap[cohortKey].collectedLater += feesPaid;
         }
-        cohortMap[cohortKey].totalCollected += inv.montoPagado || 0;
+        cohortMap[cohortKey].totalCollected += feesPaid;
       }
 
       // 2. Dashboard Snapshot Cards
@@ -306,13 +310,18 @@ export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | 
           stats.countAnulado++;
           // No sumamos a la meta útil si está anulado
         } else {
-          stats.totalMetaHonorarios += inv.honorariosTotal; // Meta útil (No anulados)
+          stats.totalMetaHonorarios += inv.honorariosTotal; // Meta útil (Honorarios Netos)
+          
+          // Sum up the fee portion of whatever has been paid so far
+          stats.totalPagado += feesPaid; 
           
           if (inv.status === 'PAGADA') {
-            stats.totalPagado += inv.montoPagado || 0;
             stats.countPagado++;
           } else {
-            stats.totalPendiente += inv.honorariosTotal;
+            // Whatever is not paid (in fees) is still pending
+            // Since feesPaid is already the net fee portion, we subtract from honorariosTotal
+            const pendingFees = Math.max(0, inv.honorariosTotal - feesPaid);
+            stats.totalPendiente += pendingFees;
             stats.countPendiente++;
           }
         }
@@ -323,8 +332,8 @@ export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | 
       if (isInRange) {
         if (!dailyTrends[dateKey]) dailyTrends[dateKey] = { generated: 0, collected: 0 };
         dailyTrends[dateKey].generated += inv.honorariosTotal;
-        if (inv.status === 'PAGADA' && inv.montoPagado) {
-          dailyTrends[dateKey].collected += inv.montoPagado;
+        if (feesPaid > 0) {
+          dailyTrends[dateKey].collected += feesPaid;
         }
       }
 

@@ -189,12 +189,14 @@ export default function GestionPage() {
                 <tr>
                   <th className="px-5 py-4 font-semibold">Conse.</th>
                   <th className="px-5 py-4 font-semibold">Conjunto</th>
-                  <th className="px-5 py-4 font-semibold">Total</th>
+                  <th className="px-5 py-4 font-semibold text-right">Honorarios</th>
+                  <th className="px-5 py-4 font-semibold text-right">IVA</th>
+                  <th className="px-5 py-4 font-semibold text-right">Total</th>
                   <th className="px-5 py-4 font-semibold text-center">Estado Pago</th>
                   <th className="px-5 py-4 font-semibold text-center">Monto Recaudado</th>
                   <th className="px-5 py-4 font-semibold text-center">Validación</th>
-          <th className="px-5 py-4 font-semibold text-center">Fecha Pago</th>
-          <th className="px-5 py-4 font-semibold text-center">Observación</th>
+                  <th className="px-5 py-4 font-semibold text-center">Fecha Pago</th>
+                  <th className="px-5 py-4 font-semibold text-center">Observación</th>
                   <th className="px-5 py-4 font-semibold text-right">Acciones</th>
                 </tr>
               </thead>
@@ -208,7 +210,13 @@ export default function GestionPage() {
                       <div className="font-bold text-slate-800">{inv.conjuntoNombre}</div>
                       <div className="text-[10px] text-slate-500">{inv.items?.length || 0} items</div>
                     </td>
-                    <td className="px-5 py-4 font-bold text-emerald-700 whitespace-nowrap">
+                    <td className="px-5 py-4 text-right font-medium text-slate-600 whitespace-nowrap">
+                      {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(inv.honorariosTotal)}
+                    </td>
+                    <td className="px-5 py-4 text-right font-medium text-slate-500 whitespace-nowrap text-[11px]">
+                      {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(inv.ivaTotal)}
+                    </td>
+                    <td className="px-5 py-4 font-bold text-emerald-700 whitespace-nowrap text-right">
                       {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(inv.granTotal)}
                     </td>
                     

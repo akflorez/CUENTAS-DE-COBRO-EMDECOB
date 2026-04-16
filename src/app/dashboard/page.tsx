@@ -196,7 +196,7 @@ export default function DashboardIndex() {
                 <Scale className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">Honorarios Generados</p>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">Honorarios (Neto)</p>
                 <h3 className="text-xl font-black text-slate-800">
                   {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(dbStats.totalMetaHonorarios)}
                 </h3>
@@ -208,7 +208,7 @@ export default function DashboardIndex() {
                 <Clock className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">Pendiente ({dbStats.countPendiente})</p>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">Pendiente (Neto) ({dbStats.countPendiente})</p>
                 <h3 className="text-xl font-black text-slate-800">
                   {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(dbStats.totalPendiente)}
                 </h3>
@@ -220,7 +220,7 @@ export default function DashboardIndex() {
                 <TrendingUp className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">Recaudado ({dbStats.countPagado})</p>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">Recaudado (Neto) ({dbStats.countPagado})</p>
                 <h3 className="text-xl font-black text-emerald-600">
                   {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(dbStats.totalPagado)}
                 </h3>
@@ -373,7 +373,7 @@ export default function DashboardIndex() {
                                 <p className="text-[16px] font-black text-slate-800 tracking-tighter drop-shadow-sm">
                                   {new Intl.NumberFormat('es-CO', { notation: 'compact' }).format(c.meta)}
                                 </p>
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">HONORARIOS</p>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">HONORARIOS (NETOS)</p>
                               </div>
                            </div>
 
@@ -604,7 +604,7 @@ export default function DashboardIndex() {
               <Users className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Honorarios (Sesión)</p>
+              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Honorarios Neto (Sesión)</p>
               <h3 className="text-xl sm:text-2xl lg:text-lg xl:text-xl font-bold text-slate-800">
                 {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(totalValue)}
               </h3>
@@ -641,7 +641,7 @@ export default function DashboardIndex() {
                 <tr>
                   <th className="px-6 py-4">Asesor</th>
                   <th className="px-6 py-4 text-center">Cant. de Cuentas</th>
-                  <th className="px-6 py-4 text-right">Honorarios</th>
+                  <th className="px-6 py-4 text-right">Honorarios (Neto)</th>
                   <th className="px-6 py-4 text-right">% del Total</th>
                 </tr>
               </thead>
@@ -698,7 +698,7 @@ export default function DashboardIndex() {
                 <tr>
                   <th className="px-6 py-4">Mes</th>
                   <th className="px-6 py-4 text-center">Cant. de Cuentas</th>
-                  <th className="px-6 py-4 text-right">Honorarios Proyectados</th>
+                  <th className="px-6 py-4 text-right">Honorarios Proyectados (Neto)</th>
                   <th className="px-6 py-4 text-center">Cumplimiento Política</th>
                 </tr>
               </thead>
