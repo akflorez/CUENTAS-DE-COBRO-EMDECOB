@@ -175,10 +175,13 @@ export async function deleteInvoice(id: string) {
     return JSON.parse(JSON.stringify({ success: false, error: error.message }));
   }
 }
-export async function updateInvoiceGestion(
+export async function updateInvoiceMetadata(
   id: string,
   gestionMes: number,
-  gestionAnio: number
+  gestionAnio: number,
+  generacionMes: number,
+  generacionAnio: number,
+  fechaElaboracion: Date | null
 ) {
   try {
     const prisma = getPrisma();
@@ -186,7 +189,10 @@ export async function updateInvoiceGestion(
       where: { id },
       data: {
         gestionMes,
-        gestionAnio
+        gestionAnio,
+        generacionMes,
+        generacionAnio,
+        fechaElaboracion
       }
     });
     try {
@@ -196,7 +202,7 @@ export async function updateInvoiceGestion(
 
     return JSON.parse(JSON.stringify({ success: true, invoice: updated }));
   } catch (error: any) {
-    console.error('Error updating invoice gestion:', error);
+    console.error('Error updating invoice metadata:', error);
     return JSON.parse(JSON.stringify({ success: false, error: error.message }));
   }
 }

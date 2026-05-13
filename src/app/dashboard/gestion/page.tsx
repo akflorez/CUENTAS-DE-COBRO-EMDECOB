@@ -52,11 +52,26 @@ export default function GestionPage() {
     }
   }, [loadData]);
 
-  const handleGestionChange = async (id: string, mes: number, anio: number) => {
+  const handleMetadataChange = async (
+    id: string, 
+    gestionMes: number, 
+    gestionAnio: number, 
+    generacionMes: number, 
+    generacionAnio: number, 
+    fechaElaboracion: string | null
+  ) => {
     setSavingId(id);
-    const res = await updateInvoiceGestion(id, mes, anio);
+    const parsedFecha = fechaElaboracion ? new Date(fechaElaboracion) : null;
+    const res = await updateInvoiceMetadata(id, gestionMes, gestionAnio, generacionMes, generacionAnio, parsedFecha);
     if (res.success) {
-      setInvoices(invoices.map(i => i.id === id ? { ...i, gestionMes: mes, gestionAnio: anio } : i));
+      setInvoices(invoices.map(i => i.id === id ? { 
+        ...i, 
+        gestionMes, 
+        gestionAnio, 
+        generacionMes, 
+        generacionAnio, 
+        fechaElaboracion: parsedFecha 
+      } : i));
     }
     setSavingId(null);
   };
@@ -203,6 +218,8 @@ export default function GestionPage() {
                   <th className="px-5 py-4 font-semibold">Conse.</th>
                   <th className="px-5 py-4 font-semibold">Conjunto</th>
                   <th className="px-5 py-4 font-semibold text-center">Mes Gestión</th>
+                  <th className="px-5 py-4 font-semibold text-center">Mes Generación</th>
+                  <th className="px-5 py-4 font-semibold text-center">Fecha Emisión</th>
                   <th className="px-5 py-4 font-semibold text-right">Honorarios</th>
                   <th className="px-5 py-4 font-semibold text-right">IVA</th>
                   <th className="px-5 py-4 font-semibold text-right">Total</th>
@@ -229,7 +246,7 @@ export default function GestionPage() {
                         <div className="flex flex-col items-center gap-1">
                           <select 
                             value={inv.gestionMes || ''}
-                            onChange={(e) => handleGestionChange(inv.id, parseInt(e.target.value), inv.gestionAnio || new Date().getFullYear())}
+                            onChange={(e) => handleMetadataChange(inv.id, parseInt(e.target.value), inv.gestionAnio || new Date().getFullYear(), inv.generacionMes || new Date().getMonth() + 1, inv.generacionAnio || new Date().getFullYear(), inv.fechaElaboracion)}
                             disabled={savingId === inv.id}
                             className="text-xs border border-slate-200 rounded px-2 py-1 outline-none focus:border-emerald-500"
                           >
@@ -240,7 +257,7 @@ export default function GestionPage() {
                           </select>
                           <select 
                             value={inv.gestionAnio || ''}
-                            onChange={(e) => handleGestionChange(inv.id, inv.gestionMes || (new Date().getMonth() + 1), parseInt(e.target.value))}
+                            onChange={(e) => handleMetadataChange(inv.id, inv.gestionMes || (new Date().getMonth() + 1), parseInt(e.target.value), inv.generacionMes || new Date().getMonth() + 1, inv.generacionAnio || new Date().getFullYear(), inv.fechaElaboracion)}
                             disabled={savingId === inv.id}
                             className="text-xs border border-slate-200 rounded px-2 py-1 outline-none focus:border-emerald-500"
                           >
@@ -256,6 +273,60 @@ export default function GestionPage() {
                             `${["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"][inv.gestionMes - 1]} ${inv.gestionAnio}` 
                             : 'N/A'
                           }
+                        </div>
+                      )}
+                    </td>
+
+                    {/* MES GENERACIÓN */}
+                    <td className="px-5 py-4 text-center">
+                      {isAdmin ? (
+                        <div className="flex flex-col items-center gap-1">
+                          <select 
+                            value={inv.generacionMes || ''}
+                            onChange={(e) => handleMetadataChange(inv.id, inv.gestionMes || new Date().getMonth() + 1, inv.gestionAnio || new Date().getFullYear(), parseInt(e.target.value), inv.generacionAnio || new Date().getFullYear(), inv.fechaElaboracion)}
+                            disabled={savingId === inv.id}
+                            className="text-xs border border-slate-200 rounded px-2 py-1 outline-none focus:border-emerald-500"
+                          >
+                            <option value="">Mes...</option>
+                            {["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"].map((m, idx) => (
+                              <option key={idx + 1} value={idx + 1}>{m}</option>
+                            ))}
+                          </select>
+                          <select 
+                            value={inv.generacionAnio || ''}
+                            onChange={(e) => handleMetadataChange(inv.id, inv.gestionMes || new Date().getMonth() + 1, inv.gestionAnio || new Date().getFullYear(), inv.generacionMes || new Date().getMonth() + 1, parseInt(e.target.value), inv.fechaElaboracion)}
+                            disabled={savingId === inv.id}
+                            className="text-xs border border-slate-200 rounded px-2 py-1 outline-none focus:border-emerald-500"
+                          >
+                            <option value="">Año...</option>
+                            {[2023, 2024, 2025, 2026, 2027, 2028].map(y => (
+                              <option key={y} value={y}>{y}</option>
+                            ))}
+                          </select>
+                        </div>
+                      ) : (
+                        <div className="text-xs font-medium text-slate-600">
+                          {inv.generacionMes && inv.generacionAnio ? 
+                            `${["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"][inv.generacionMes - 1]} ${inv.generacionAnio}` 
+                            : (inv.createdAt ? `${["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"][new Date(inv.createdAt).getMonth()]} ${new Date(inv.createdAt).getFullYear()}` : 'N/A')
+                          }
+                        </div>
+                      )}
+                    </td>
+
+                    {/* FECHA EMISIÓN */}
+                    <td className="px-5 py-4 text-center">
+                      {isAdmin ? (
+                        <input
+                          type="date"
+                          className="text-xs border border-slate-200 rounded px-2 py-1 outline-none focus:border-emerald-500"
+                          value={inv.fechaElaboracion ? new Date(inv.fechaElaboracion).toISOString().split('T')[0] : ''}
+                          onChange={(e) => handleMetadataChange(inv.id, inv.gestionMes || new Date().getMonth() + 1, inv.gestionAnio || new Date().getFullYear(), inv.generacionMes || new Date().getMonth() + 1, inv.generacionAnio || new Date().getFullYear(), e.target.value)}
+                          disabled={savingId === inv.id}
+                        />
+                      ) : (
+                        <div className="text-xs font-medium text-slate-600">
+                          {inv.fechaElaboracion ? new Date(inv.fechaElaboracion).toLocaleDateString('es-CO') : 'N/A'}
                         </div>
                       )}
                     </td>
