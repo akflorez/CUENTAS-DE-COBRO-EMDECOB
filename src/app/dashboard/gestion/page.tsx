@@ -232,7 +232,17 @@ export default function GestionPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 min-h-[300px]">
-                {invoices.map((inv) => (
+                {invoices.map((inv) => {
+                  // Calcular defaults basados en fecha de elaboración o creación
+                  const fallbackDate = inv.fechaElaboracion ? new Date(inv.fechaElaboracion) : (inv.createdAt ? new Date(inv.createdAt) : new Date());
+                  const defaultMes = fallbackDate.getMonth() + 1;
+                  const defaultAnio = fallbackDate.getFullYear();
+                  const gMes = inv.gestionMes || defaultMes;
+                  const gAnio = inv.gestionAnio || defaultAnio;
+                  const genMes = inv.generacionMes || defaultMes;
+                  const genAnio = inv.generacionAnio || defaultAnio;
+
+                  return (
                   <tr key={inv.id} className={`hover:bg-slate-50 transition-colors ${savingId === inv.id ? 'opacity-50' : ''} ${inv.status === 'ANULADA' ? 'bg-slate-50 opacity-60' : ''}`}>
                     <td className="px-5 py-4 font-medium text-slate-700 whitespace-nowrap">
                       {inv.consecutivo}
@@ -245,23 +255,21 @@ export default function GestionPage() {
                       {isAdmin ? (
                         <div className="flex flex-col items-center gap-1">
                           <select 
-                            value={inv.gestionMes || ''}
-                            onChange={(e) => handleMetadataChange(inv.id, parseInt(e.target.value), inv.gestionAnio || new Date().getFullYear(), inv.generacionMes || new Date().getMonth() + 1, inv.generacionAnio || new Date().getFullYear(), inv.fechaElaboracion)}
+                            value={gMes}
+                            onChange={(e) => handleMetadataChange(inv.id, parseInt(e.target.value), gAnio, genMes, genAnio, inv.fechaElaboracion)}
                             disabled={savingId === inv.id}
                             className="text-xs border border-slate-200 rounded px-2 py-1 outline-none focus:border-emerald-500"
                           >
-                            <option value="">Mes...</option>
                             {["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"].map((m, idx) => (
                               <option key={idx + 1} value={idx + 1}>{m}</option>
                             ))}
                           </select>
                           <select 
-                            value={inv.gestionAnio || ''}
-                            onChange={(e) => handleMetadataChange(inv.id, inv.gestionMes || (new Date().getMonth() + 1), parseInt(e.target.value), inv.generacionMes || new Date().getMonth() + 1, inv.generacionAnio || new Date().getFullYear(), inv.fechaElaboracion)}
+                            value={gAnio}
+                            onChange={(e) => handleMetadataChange(inv.id, gMes, parseInt(e.target.value), genMes, genAnio, inv.fechaElaboracion)}
                             disabled={savingId === inv.id}
                             className="text-xs border border-slate-200 rounded px-2 py-1 outline-none focus:border-emerald-500"
                           >
-                            <option value="">Año...</option>
                             {[2023, 2024, 2025, 2026, 2027, 2028].map(y => (
                               <option key={y} value={y}>{y}</option>
                             ))}
@@ -269,10 +277,7 @@ export default function GestionPage() {
                         </div>
                       ) : (
                         <div className="text-xs font-medium text-slate-600">
-                          {inv.gestionMes && inv.gestionAnio ? 
-                            `${["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"][inv.gestionMes - 1]} ${inv.gestionAnio}` 
-                            : 'N/A'
-                          }
+                          {`${["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"][gMes - 1]} ${gAnio}`}
                         </div>
                       )}
                     </td>
@@ -282,23 +287,21 @@ export default function GestionPage() {
                       {isAdmin ? (
                         <div className="flex flex-col items-center gap-1">
                           <select 
-                            value={inv.generacionMes || ''}
-                            onChange={(e) => handleMetadataChange(inv.id, inv.gestionMes || new Date().getMonth() + 1, inv.gestionAnio || new Date().getFullYear(), parseInt(e.target.value), inv.generacionAnio || new Date().getFullYear(), inv.fechaElaboracion)}
+                            value={genMes}
+                            onChange={(e) => handleMetadataChange(inv.id, gMes, gAnio, parseInt(e.target.value), genAnio, inv.fechaElaboracion)}
                             disabled={savingId === inv.id}
                             className="text-xs border border-slate-200 rounded px-2 py-1 outline-none focus:border-emerald-500"
                           >
-                            <option value="">Mes...</option>
                             {["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"].map((m, idx) => (
                               <option key={idx + 1} value={idx + 1}>{m}</option>
                             ))}
                           </select>
                           <select 
-                            value={inv.generacionAnio || ''}
-                            onChange={(e) => handleMetadataChange(inv.id, inv.gestionMes || new Date().getMonth() + 1, inv.gestionAnio || new Date().getFullYear(), inv.generacionMes || new Date().getMonth() + 1, parseInt(e.target.value), inv.fechaElaboracion)}
+                            value={genAnio}
+                            onChange={(e) => handleMetadataChange(inv.id, gMes, gAnio, genMes, parseInt(e.target.value), inv.fechaElaboracion)}
                             disabled={savingId === inv.id}
                             className="text-xs border border-slate-200 rounded px-2 py-1 outline-none focus:border-emerald-500"
                           >
-                            <option value="">Año...</option>
                             {[2023, 2024, 2025, 2026, 2027, 2028].map(y => (
                               <option key={y} value={y}>{y}</option>
                             ))}
@@ -306,10 +309,7 @@ export default function GestionPage() {
                         </div>
                       ) : (
                         <div className="text-xs font-medium text-slate-600">
-                          {inv.generacionMes && inv.generacionAnio ? 
-                            `${["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"][inv.generacionMes - 1]} ${inv.generacionAnio}` 
-                            : (inv.createdAt ? `${["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"][new Date(inv.createdAt).getMonth()]} ${new Date(inv.createdAt).getFullYear()}` : 'N/A')
-                          }
+                          {`${["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"][genMes - 1]} ${genAnio}`}
                         </div>
                       )}
                     </td>
@@ -321,7 +321,7 @@ export default function GestionPage() {
                           type="date"
                           className="text-xs border border-slate-200 rounded px-2 py-1 outline-none focus:border-emerald-500"
                           value={inv.fechaElaboracion ? new Date(inv.fechaElaboracion).toISOString().split('T')[0] : ''}
-                          onChange={(e) => handleMetadataChange(inv.id, inv.gestionMes || new Date().getMonth() + 1, inv.gestionAnio || new Date().getFullYear(), inv.generacionMes || new Date().getMonth() + 1, inv.generacionAnio || new Date().getFullYear(), e.target.value)}
+                          onChange={(e) => handleMetadataChange(inv.id, gMes, gAnio, genMes, genAnio, e.target.value)}
                           disabled={savingId === inv.id}
                         />
                       ) : (
@@ -424,7 +424,8 @@ export default function GestionPage() {
                       )}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
             
