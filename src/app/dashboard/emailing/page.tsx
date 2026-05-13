@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAppContext } from "@/context/AppContext";
 import { useDropzone } from "react-dropzone";
 import * as XLSX from "xlsx";
-import { UploadCloud, CheckCircle2, FileSpreadsheet, FileWarning, Send, Mail, Settings, Lock } from "lucide-react";
+import { UploadCloud, CheckCircle2, FileSpreadsheet, FileWarning, Send, Mail, Settings, Lock, CalendarDays } from "lucide-react";
 import { validateRecord, groupRecords } from "@/lib/mapper";
 import { getPdfBlob } from "@/lib/pdfGenerator";
 import { InvoiceTemplate } from "@/components/InvoiceTemplate";
@@ -23,6 +23,8 @@ export default function EmailingPage() {
   const [smtpUser, setSmtpUser] = useState("");
   const [smtpPass, setSmtpPass] = useState("");
   const [smtpError, setSmtpError] = useState("");
+  const [envioGestionMes, setEnvioGestionMes] = useState(new Date().getMonth() + 1);
+  const [envioGestionAnio, setEnvioGestionAnio] = useState(new Date().getFullYear());
 
   // Cargar credenciales guardadas al montar
   React.useEffect(() => {
@@ -185,7 +187,12 @@ export default function EmailingPage() {
             } else {
                 // Guardar en la base de datos
                 const { saveInvoiceRecord } = await import("@/app/actions/invoice");
-                await saveInvoiceRecord(match.invoice.mapped);
+                const recordWithGestion = {
+                  ...match.invoice.mapped,
+                  gestionMes: envioGestionMes,
+                  gestionAnio: envioGestionAnio
+                };
+                await saveInvoiceRecord(recordWithGestion);
             }
             
             // Pausa de cortesía para no colapsar la memoria del cliente ni ser bloqueado por Spam limits
@@ -349,6 +356,7 @@ export default function EmailingPage() {
              {/* ACCION DE ENVIO */}
              <div className="p-6 border-t border-slate-100 bg-slate-50">
                  {!sendingState.isActive && !sendingState.completed && (
+                   <>
                      <div className="mb-6 bg-white p-5 rounded-xl border border-blue-100 shadow-sm">
                          <h4 className="font-bold text-slate-800 text-sm mb-3 flex items-center">
                              <Settings className="w-4 h-4 mr-2 text-slate-500"/> Configuración de Envío SMTP (Gmail)
@@ -379,6 +387,40 @@ export default function EmailingPage() {
                          </div>
                          {smtpError && <p className="text-xs text-red-500 font-medium mt-2 animate-pulse">{smtpError}</p>}
                      </div>
+
+                     <div className="mb-6 bg-white p-5 rounded-xl border border-emerald-100 shadow-sm">
+                         <h4 className="font-bold text-slate-800 text-sm mb-3 flex items-center">
+                             <CalendarDays className="w-4 h-4 mr-2 text-emerald-500"/> Mes de Gestión para este envío
+                         </h4>
+                         <div className="grid grid-cols-2 gap-4">
+                             <div>
+                                 <label className="block text-xs font-bold text-slate-600 mb-1">Mes</label>
+                                 <select
+                                   value={envioGestionMes}
+                                   onChange={(e) => setEnvioGestionMes(parseInt(e.target.value))}
+                                   className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500"
+                                 >
+                                   {["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"].map((m, idx) => (
+                                     <option key={idx + 1} value={idx + 1}>{m}</option>
+                                   ))}
+                                 </select>
+                             </div>
+                             <div>
+                                 <label className="block text-xs font-bold text-slate-600 mb-1">Año</label>
+                                 <select
+                                   value={envioGestionAnio}
+                                   onChange={(e) => setEnvioGestionAnio(parseInt(e.target.value))}
+                                   className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500"
+                                 >
+                                   {[2024, 2025, 2026, 2027, 2028].map(y => (
+                                     <option key={y} value={y}>{y}</option>
+                                   ))}
+                                 </select>
+                             </div>
+                         </div>
+                         <p className="text-[10px] text-slate-400 mt-2">Todas las cuentas enviadas se guardarán con este mes de gestión en la base de datos.</p>
+                     </div>
+                   </>
                  )}
 
                  {!sendingState.isActive && !sendingState.completed ? (
