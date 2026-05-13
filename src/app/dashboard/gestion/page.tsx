@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { getInvoices, updateInvoiceStatus, getConjuntos, updateInvoiceGestion } from "@/app/actions/invoice";
+import { getInvoices, updateInvoiceStatus, getConjuntos, updateInvoiceMetadata } from "@/app/actions/invoice";
 import { ListChecks, Clock, CheckCircle2, AlertCircle, Building2, ChevronLeft, ChevronRight, Search, X } from "lucide-react";
 import SearchableSelect from "@/components/SearchableSelect";
 
