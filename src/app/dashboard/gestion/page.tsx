@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { getInvoices, updateInvoiceStatus, getConjuntos } from "@/app/actions/invoice";
+import { getInvoices, updateInvoiceStatus, getConjuntos, updateInvoiceGestion } from "@/app/actions/invoice";
 import { ListChecks, Clock, CheckCircle2, AlertCircle, Building2, ChevronLeft, ChevronRight, Search, X } from "lucide-react";
 import SearchableSelect from "@/components/SearchableSelect";
 
@@ -16,6 +16,7 @@ export default function GestionPage() {
   const [conjuntos, setConjuntos] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const loadData = React.useCallback(async () => {
     setLoading(true);
@@ -46,7 +47,19 @@ export default function GestionPage() {
 
   useEffect(() => {
     loadData();
+    if (typeof window !== 'undefined') {
+      setIsAdmin(localStorage.getItem('currentUser') === 'EMDECOB');
+    }
   }, [loadData]);
+
+  const handleGestionChange = async (id: string, mes: number, anio: number) => {
+    setSavingId(id);
+    const res = await updateInvoiceGestion(id, mes, anio);
+    if (res.success) {
+      setInvoices(invoices.map(i => i.id === id ? { ...i, gestionMes: mes, gestionAnio: anio } : i));
+    }
+    setSavingId(null);
+  };
 
   const handleStatusChange = async (id: string, newStatus: string) => {
     setSavingId(id);
@@ -189,6 +202,7 @@ export default function GestionPage() {
                 <tr>
                   <th className="px-5 py-4 font-semibold">Conse.</th>
                   <th className="px-5 py-4 font-semibold">Conjunto</th>
+                  <th className="px-5 py-4 font-semibold text-center">Mes Gestión</th>
                   <th className="px-5 py-4 font-semibold text-right">Honorarios</th>
                   <th className="px-5 py-4 font-semibold text-right">IVA</th>
                   <th className="px-5 py-4 font-semibold text-right">Total</th>
@@ -209,6 +223,41 @@ export default function GestionPage() {
                     <td className="px-5 py-4">
                       <div className="font-bold text-slate-800">{inv.conjuntoNombre}</div>
                       <div className="text-[10px] text-slate-500">{inv.items?.length || 0} items</div>
+                    </td>
+                    <td className="px-5 py-4 text-center">
+                      {isAdmin ? (
+                        <div className="flex flex-col items-center gap-1">
+                          <select 
+                            value={inv.gestionMes || ''}
+                            onChange={(e) => handleGestionChange(inv.id, parseInt(e.target.value), inv.gestionAnio || new Date().getFullYear())}
+                            disabled={savingId === inv.id}
+                            className="text-xs border border-slate-200 rounded px-2 py-1 outline-none focus:border-emerald-500"
+                          >
+                            <option value="">Mes...</option>
+                            {["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"].map((m, idx) => (
+                              <option key={idx + 1} value={idx + 1}>{m}</option>
+                            ))}
+                          </select>
+                          <select 
+                            value={inv.gestionAnio || ''}
+                            onChange={(e) => handleGestionChange(inv.id, inv.gestionMes || (new Date().getMonth() + 1), parseInt(e.target.value))}
+                            disabled={savingId === inv.id}
+                            className="text-xs border border-slate-200 rounded px-2 py-1 outline-none focus:border-emerald-500"
+                          >
+                            <option value="">Año...</option>
+                            {[2023, 2024, 2025, 2026, 2027, 2028].map(y => (
+                              <option key={y} value={y}>{y}</option>
+                            ))}
+                          </select>
+                        </div>
+                      ) : (
+                        <div className="text-xs font-medium text-slate-600">
+                          {inv.gestionMes && inv.gestionAnio ? 
+                            `${["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"][inv.gestionMes - 1]} ${inv.gestionAnio}` 
+                            : 'N/A'
+                          }
+                        </div>
+                      )}
                     </td>
                     <td className="px-5 py-4 text-right font-medium text-slate-600 whitespace-nowrap">
                       {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(inv.honorariosTotal)}

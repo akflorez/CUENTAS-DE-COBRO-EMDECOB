@@ -175,6 +175,31 @@ export async function deleteInvoice(id: string) {
     return JSON.parse(JSON.stringify({ success: false, error: error.message }));
   }
 }
+export async function updateInvoiceGestion(
+  id: string,
+  gestionMes: number,
+  gestionAnio: number
+) {
+  try {
+    const prisma = getPrisma();
+    const updated = await (prisma.invoice as any).update({
+      where: { id },
+      data: {
+        gestionMes,
+        gestionAnio
+      }
+    });
+    try {
+        revalidatePath('/dashboard/gestion');
+        revalidatePath('/dashboard');
+    } catch (e) { console.warn('revalidatePath error:', e); }
+
+    return JSON.parse(JSON.stringify({ success: true, invoice: updated }));
+  } catch (error: any) {
+    console.error('Error updating invoice gestion:', error);
+    return JSON.parse(JSON.stringify({ success: false, error: error.message }));
+  }
+}
 
 export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | null, conjunto?: string) {
   try {

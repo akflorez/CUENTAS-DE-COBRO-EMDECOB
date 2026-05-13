@@ -22,6 +22,7 @@ export default function LoginPage() {
     const isValidTesoreria = user === 'TESORERIA' && password === '261424';
 
     if (isValidProph || isValidEmdecob || isValidTesoreria) {
+      localStorage.setItem('currentUser', user);
       setTimeout(() => {
         router.push('/dashboard/upload');
       }, 800);
