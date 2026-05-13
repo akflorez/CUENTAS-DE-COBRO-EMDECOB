@@ -208,6 +208,10 @@ export async function updateInvoiceMetadata(
 }
 
 export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | null, conjunto?: string) {
+  // Forzar datos frescos (no usar caché de Next.js)
+  const { unstable_noStore } = await import('next/cache');
+  unstable_noStore();
+  
   try {
     const prisma = getPrisma();
     const where: any = {};

@@ -48,6 +48,7 @@ export default function DashboardIndex() {
   const [dbYear, setDbYear] = React.useState<string>(new Date().getFullYear().toString());
   const [dbConjunto, setDbConjunto] = React.useState<string>("Todos");
   const [conjuntos, setConjuntos] = React.useState<string[]>([]);
+  const [refreshKey, setRefreshKey] = React.useState(0);
 
   const months = [
     { value: "01", label: "Enero" }, { value: "02", label: "Febrero" },
@@ -84,7 +85,7 @@ export default function DashboardIndex() {
     } finally {
       setLoadingStats(false);
     }
-  }, [dbStartDate, dbEndDate, dbConjunto]);
+  }, [dbStartDate, dbEndDate, dbConjunto, refreshKey]);
 
   const loadInitialData = React.useCallback(async () => {
     const res = await getConjuntos();
@@ -96,6 +97,11 @@ export default function DashboardIndex() {
   React.useEffect(() => {
     fetchDbStats();
   }, [fetchDbStats]);
+
+  // Forzar re-fetch cada vez que el componente se monta (navegación)
+  React.useEffect(() => {
+    setRefreshKey(Date.now());
+  }, []);
 
   React.useEffect(() => {
     loadInitialData();
