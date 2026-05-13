@@ -376,8 +376,8 @@ export default function DashboardIndex() {
 
                               {/* Valor Meta Arriba */}
                               <div className="absolute -top-16 w-full text-center">
-                                <p className="text-[16px] font-black text-slate-800 tracking-tighter drop-shadow-sm">
-                                  {new Intl.NumberFormat('es-CO', { notation: 'compact' }).format(c.meta)}
+                                <p className="text-[14px] font-black text-slate-800 tracking-tighter drop-shadow-sm">
+                                  {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(c.meta)}
                                 </p>
                                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">HONORARIOS (NETOS)</p>
                               </div>
