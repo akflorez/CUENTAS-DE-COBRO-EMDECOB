@@ -25,6 +25,7 @@ export default function EmailingPage() {
   const [smtpError, setSmtpError] = useState("");
   const [envioGestionMes, setEnvioGestionMes] = useState(new Date().getMonth() + 1);
   const [envioGestionAnio, setEnvioGestionAnio] = useState(new Date().getFullYear());
+  const [envioFechaEmision, setEnvioFechaEmision] = useState(new Date().toISOString().split('T')[0]);
 
   // Cargar credenciales guardadas al montar
   React.useEffect(() => {
@@ -190,7 +191,12 @@ export default function EmailingPage() {
                 const recordWithGestion = {
                   ...match.invoice.mapped,
                   gestionMes: envioGestionMes,
-                  gestionAnio: envioGestionAnio
+                  gestionAnio: envioGestionAnio,
+                  // Si se especificó una fecha de emisión manual, la inyectamos en el primer item (que usa la DB)
+                  items: match.invoice.mapped.items.map((item: any, idx: number) => ({
+                    ...item,
+                    fechaElaboracion: idx === 0 ? envioFechaEmision : item.fechaElaboracion
+                  }))
                 };
                 await saveInvoiceRecord(recordWithGestion);
             }
@@ -417,8 +423,17 @@ export default function EmailingPage() {
                                    ))}
                                  </select>
                              </div>
+                             <div className="col-span-2">
+                                 <label className="block text-xs font-bold text-slate-600 mb-1">Fecha de Emisión (Cuenta de Cobro)</label>
+                                 <input 
+                                   type="date"
+                                   value={envioFechaEmision}
+                                   onChange={(e) => setEnvioFechaEmision(e.target.value)}
+                                   className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500"
+                                 />
+                             </div>
                          </div>
-                         <p className="text-[10px] text-slate-400 mt-2">Todas las cuentas enviadas se guardarán con este mes de gestión en la base de datos.</p>
+                         <p className="text-[10px] text-slate-400 mt-2">Todas las cuentas enviadas se guardarán con este mes de gestión y fecha de emisión en la base de datos.</p>
                      </div>
                    </>
                  )}

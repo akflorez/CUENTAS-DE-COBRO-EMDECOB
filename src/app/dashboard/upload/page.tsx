@@ -159,11 +159,11 @@ export default function UploadPage() {
         {filesData.length === 0 && (
           <div className="flex flex-col gap-6 p-8 bg-indigo-50/50 rounded-2xl border border-indigo-100 mb-8 animate-in fade-in zoom-in duration-500">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Reference Date */}
+              {/* Fecha de Emisión */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2 text-indigo-700">
                   <CalendarDays className="w-5 h-5" />
-                  <p className="font-bold text-sm uppercase tracking-wide">¿Cuándo se envió este archivo?</p>
+                  <p className="font-bold text-sm uppercase tracking-wide">Fecha de Emisión de las Cuentas</p>
                 </div>
                 <input 
                   type="date" 
@@ -171,7 +171,7 @@ export default function UploadPage() {
                   onChange={(e) => setFileDate(e.target.value)}
                   className="w-full bg-white border border-indigo-200 rounded-xl px-4 py-3 text-lg font-bold text-indigo-900 focus:ring-4 focus:ring-indigo-500/10 outline-none shadow-sm transition-all"
                 />
-                <p className="text-xs text-indigo-500 font-medium">Esta fecha se usará para el gráfico y la política del día 10.</p>
+                <p className="text-xs text-indigo-500 font-medium">Esta es la fecha que aparecerá como "Fecha de Elaboración" en las cuentas de cobro.</p>
               </div>
 
               {/* Gestión Selector */}
