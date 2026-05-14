@@ -2,10 +2,11 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import { getInvoices, updateInvoiceStatus, getConjuntos, updateInvoiceMetadata } from "@/app/actions/invoice";
-import { ListChecks, Clock, CheckCircle2, AlertCircle, Building2, ChevronLeft, ChevronRight, Search, X, Download, FileText, FileArchive } from "lucide-react";
+import { ListChecks, Clock, CheckCircle2, AlertCircle, Building2, ChevronLeft, ChevronRight, Search, X, Download, FileText, FileArchive, FileSpreadsheet } from "lucide-react";
 import SearchableSelect from "@/components/SearchableSelect";
 import { downloadPdf, downloadPdfsAsZip } from "@/lib/pdfGenerator";
 import { InvoiceTemplate } from "@/components/InvoiceTemplate";
+import * as XLSX from "xlsx";
 
 export default function GestionPage() {
   const [invoices, setInvoices] = useState<any[]>([]);
@@ -177,8 +178,52 @@ export default function GestionPage() {
        setIsDownloading(null);
      }
    };
-
-   const [batchForZip, setBatchForZip] = useState<any[]>([]);
+ 
+    const handleExportExcel = async () => {
+      setIsDownloading("EXCEL");
+      try {
+        const res = await getInvoices(1, 2000, dbConjunto, filterGenMes, filterGenAnio);
+        if (!res.success) throw new Error(res.error);
+        
+        const allInvoices = res.invoices;
+        if (allInvoices.length === 0) {
+          alert("No hay registros para exportar.");
+          setIsDownloading(null);
+          return;
+        }
+  
+        // Preparar datos para Excel
+        const excelRows = allInvoices.map((inv: any) => ({
+          "Consecutivo": inv.consecutivo,
+          "Conjunto": inv.conjuntoNombre,
+          "Mes Gestión": ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"][inv.gestionMes - 1],
+          "Año Gestión": inv.gestionAnio,
+          "Mes Generación": ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"][inv.generacionMes - 1],
+          "Año Generación": inv.generacionAnio,
+          "Fecha Emisión": inv.fechaElaboracion ? new Date(inv.fechaElaboracion).toLocaleDateString('es-CO') : 'N/A',
+          "Honorarios": inv.honorariosTotal,
+          "IVA": inv.ivaTotal,
+          "Total": inv.granTotal,
+          "Estado": inv.status,
+          "Monto Recaudado": inv.montoRecaudado || 0,
+          "Fecha Pago": inv.fechaPago ? new Date(inv.fechaPago).toLocaleDateString('es-CO') : 'N/A',
+          "Observación": inv.observacion || ""
+        }));
+  
+        const worksheet = XLSX.utils.json_to_sheet(excelRows);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Recaudos");
+        XLSX.writeFile(workbook, `Gestion_Recaudos_${dbConjunto}_${new Date().toISOString().split('T')[0]}.xlsx`);
+  
+      } catch (err) {
+        console.error("Error exporting Excel:", err);
+        alert("Error al exportar Excel");
+      } finally {
+        setIsDownloading(null);
+      }
+    };
+ 
+    const [batchForZip, setBatchForZip] = useState<any[]>([]);
    const batchRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
 
   const handleStatusChange = async (id: string, newStatus: string) => {
@@ -337,18 +382,31 @@ export default function GestionPage() {
                    </button>
                  )}
                  
-                 <button 
-                   onClick={handleDownloadBulkZip}
-                   disabled={isDownloading === "BULK" || invoices.length === 0}
-                   className="px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-bold flex items-center hover:bg-slate-800 transition-all shadow-md shadow-slate-900/20 disabled:opacity-50 h-[38px]"
-                 >
-                   {isDownloading === "BULK" ? (
-                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                   ) : (
-                     <FileArchive className="w-4 h-4 mr-2" />
-                   )}
-                   Descargar Lote (ZIP)
-                 </button>
+                  <button 
+                    onClick={handleExportExcel}
+                    disabled={isDownloading === "EXCEL" || invoices.length === 0}
+                    className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-bold flex items-center hover:bg-emerald-700 transition-all shadow-md shadow-emerald-600/20 disabled:opacity-50 h-[38px]"
+                  >
+                    {isDownloading === "EXCEL" ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                    ) : (
+                      <FileSpreadsheet className="w-4 h-4 mr-2" />
+                    )}
+                    Exportar Excel
+                  </button>
+
+                  <button 
+                    onClick={handleDownloadBulkZip}
+                    disabled={isDownloading === "BULK" || invoices.length === 0}
+                    className="px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-bold flex items-center hover:bg-slate-800 transition-all shadow-md shadow-slate-900/20 disabled:opacity-50 h-[38px]"
+                  >
+                    {isDownloading === "BULK" ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                    ) : (
+                      <FileArchive className="w-4 h-4 mr-2" />
+                    )}
+                    Descargar Lote (ZIP)
+                  </button>
                </div>
             </div>
           </div>
