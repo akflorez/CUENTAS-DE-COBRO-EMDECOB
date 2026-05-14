@@ -3,16 +3,20 @@
 import React, { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import * as XLSX from "xlsx";
-import { UploadCloud, FileSpreadsheet, ArrowRight, AlertCircle, X, PlusCircle, Settings, Play, CalendarDays } from "lucide-react";
 import { useAppContext, FileData } from "@/context/AppContext";
+import { groupRecords } from "@/lib/mapper";
+import { saveInvoiceRecord } from "@/app/actions/invoice";
+import { UploadCloud, FileSpreadsheet, ArrowRight, AlertCircle, X, PlusCircle, Settings, Play, CalendarDays, Database, CheckCircle2 } from "lucide-react";
 
 export default function UploadPage() {
   const router = useRouter();
-  const { filesData, setFilesData, startingConsecutive, setStartingConsecutive } = useAppContext();
+  const { filesData, setFilesData, startingConsecutive, setStartingConsecutive, excelData } = useAppContext();
   
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveProgress, setSaveProgress] = useState({ current: 0, total: 0 });
   const [fileDate, setFileDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [gestionMonth, setGestionMonth] = useState<number>(new Date().getMonth()); // 0-indexed for JS but we'll show 1-12
   const [gestionYear, setGestionYear] = useState<number>(new Date().getFullYear());
@@ -104,6 +108,37 @@ export default function UploadPage() {
 
   const removeFile = (fileName: string) => {
     setFilesData(prev => prev.filter(f => f.fileName !== fileName));
+  };
+
+  const handleSaveToDashboard = async () => {
+    if (filesData.length === 0) return;
+    if (!confirm(`¿Estás seguro de que deseas guardar estos ${filesData.length} archivos directamente en el Dashboard?`)) return;
+
+    setIsSaving(true);
+    setError(null);
+    
+    try {
+      const mappedInvoices = groupRecords(excelData, startingConsecutive);
+      
+      setSaveProgress({ current: 0, total: mappedInvoices.length });
+      
+      let count = 0;
+      for (const inv of mappedInvoices) {
+        const res = await saveInvoiceRecord(inv);
+        if (!res.success) {
+          console.error(`Error guardando ${inv.consecutivo}:`, res.error);
+        }
+        count++;
+        setSaveProgress({ current: count, total: mappedInvoices.length });
+      }
+
+      alert(`Se han guardado ${count} cuentas de cobro exitosamente.`);
+      router.push("/dashboard/gestion");
+    } catch (err: any) {
+      setError("Error al guardar en el dashboard: " + err.message);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const totalRecords = filesData.reduce((acc, file) => acc + file.data.length, 0);
@@ -273,26 +308,33 @@ export default function UploadPage() {
                </div>
             </div>
 
-            <div className="mt-8 flex justify-end">
-              <button
-                onClick={() => router.push("/dashboard/validate")}
-                disabled={isLoading}
-                className="inline-flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-green-600 hover:bg-green-700 shadow-md shadow-green-600/20 transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+            {/* BOTONES DE ACCIÓN */}
+            <div className="flex flex-col md:flex-row gap-4 pt-4 mt-8">
+              <button 
+                onClick={handleSaveToDashboard}
+                disabled={isSaving || filesData.length === 0}
+                className="flex-1 bg-white border-2 border-slate-900 text-slate-900 px-6 py-4 rounded-xl font-bold hover:bg-slate-50 transition-all flex items-center justify-center disabled:opacity-50 shadow-sm"
               >
-                {isLoading ? (
-                   <span className="flex items-center">
-                   <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                   </svg>
-                   Procesando...
-                 </span>
+                {isSaving ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-slate-900 border-t-transparent rounded-full animate-spin mr-3"></div>
+                    Guardando {saveProgress.current}/{saveProgress.total}...
+                  </>
                 ) : (
                   <>
-                    Validar {totalRecords} Registros
-                    <Play className="ml-2 w-4 h-4 fill-white" />
+                    <Database className="w-5 h-5 mr-2" />
+                    Guardar Directo en Gestión
                   </>
                 )}
+              </button>
+
+              <button 
+                onClick={() => router.push("/dashboard/preview")}
+                disabled={isSaving || filesData.length === 0}
+                className="flex-[1.5] bg-slate-900 text-white px-6 py-4 rounded-xl font-bold hover:bg-slate-800 transition-all flex items-center justify-center shadow-lg shadow-slate-900/20 disabled:opacity-50"
+              >
+                Continuar a Vista Previa
+                <ArrowRight className="w-5 h-5 ml-2" />
               </button>
             </div>
           </div>
