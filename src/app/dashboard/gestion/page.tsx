@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { getInvoices, updateInvoiceStatus, getConjuntos, updateInvoiceMetadata } from "@/app/actions/invoice";
-import { ListChecks, Clock, CheckCircle2, AlertCircle, Building2, ChevronLeft, ChevronRight, Search, X } from "lucide-react";
+import { ListChecks, Clock, CheckCircle2, AlertCircle, Building2, ChevronLeft, ChevronRight, Search, X, Download, FileText } from "lucide-react";
 import SearchableSelect from "@/components/SearchableSelect";
+import { downloadPdf } from "@/lib/pdfGenerator";
+import { InvoiceTemplate } from "@/components/InvoiceTemplate";
 
 export default function GestionPage() {
   const [invoices, setInvoices] = useState<any[]>([]);
@@ -17,6 +19,9 @@ export default function GestionPage() {
   const [error, setError] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isDownloading, setIsDownloading] = useState<string | null>(null);
+  const templateRef = useRef<HTMLDivElement>(null);
+  const [currentInvoiceForPdf, setCurrentInvoiceForPdf] = useState<any>(null);
 
   const loadData = React.useCallback(async () => {
     setLoading(true);
@@ -58,11 +63,12 @@ export default function GestionPage() {
     gestionAnio: number, 
     generacionMes: number, 
     generacionAnio: number, 
-    fechaElaboracion: string | null
+    fechaElaboracion: string | null,
+    consecutivo?: string
   ) => {
     setSavingId(id);
     const parsedFecha = fechaElaboracion ? new Date(fechaElaboracion) : null;
-    const res = await updateInvoiceMetadata(id, gestionMes, gestionAnio, generacionMes, generacionAnio, parsedFecha);
+    const res = await updateInvoiceMetadata(id, gestionMes, gestionAnio, generacionMes, generacionAnio, parsedFecha, consecutivo);
     if (res.success) {
       setInvoices(invoices.map(i => i.id === id ? { 
         ...i, 
@@ -70,11 +76,33 @@ export default function GestionPage() {
         gestionAnio, 
         generacionMes, 
         generacionAnio, 
-        fechaElaboracion: parsedFecha 
+        fechaElaboracion: parsedFecha,
+        consecutivo: consecutivo || i.consecutivo
       } : i));
+    } else {
+      alert(res.error || "Error al actualizar metadatos");
     }
     setSavingId(null);
   };
+
+  const handleDownloadPdf = async (invoice: any) => {
+     setIsDownloading(invoice.id);
+     setCurrentInvoiceForPdf(invoice);
+     
+     // Pequeño delay para que React renderice el template oculto
+     setTimeout(async () => {
+       if (templateRef.current) {
+         try {
+           const fileName = `${invoice.consecutivo}_${invoice.conjuntoNombre}.pdf`.replace(/[^a-zA-Z0-9_.-]/g, '_');
+           await downloadPdf(templateRef.current, fileName, 'letter', 'portrait');
+         } catch (err) {
+           console.error("Error generating PDF:", err);
+           alert("Error al generar el PDF");
+         }
+       }
+       setIsDownloading(null);
+     }, 500);
+   };
 
   const handleStatusChange = async (id: string, newStatus: string) => {
     setSavingId(id);
@@ -154,6 +182,12 @@ export default function GestionPage() {
 
   return (
     <div className="max-w-[98%] mx-auto pb-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* Template oculto para impresión (off-screen para que html2pdf pueda medirlo) */}
+      <div style={{ position: 'absolute', left: '-10000px', top: 0, width: '700px', overflow: 'visible', pointerEvents: 'none' }} aria-hidden="true">
+        <div ref={templateRef}>
+           {currentInvoiceForPdf && <InvoiceTemplate data={currentInvoiceForPdf} />}
+        </div>
+      </div>
       <div className="mb-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
@@ -245,8 +279,22 @@ export default function GestionPage() {
                   return (
                   <tr key={inv.id} className={`hover:bg-slate-50 transition-colors ${savingId === inv.id ? 'opacity-50' : ''} ${inv.status === 'ANULADA' ? 'bg-slate-50 opacity-60' : ''}`}>
                     <td className="px-5 py-4 font-medium text-slate-700 whitespace-nowrap">
-                      {inv.consecutivo}
-                    </td>
+                       {isAdmin ? (
+                         <input 
+                           type="text"
+                           value={inv.consecutivo}
+                           onChange={(e) => {
+                             const newVal = e.target.value;
+                             setInvoices(invoices.map(i => i.id === inv.id ? { ...i, consecutivo: newVal } : i));
+                           }}
+                           onBlur={(e) => handleMetadataChange(inv.id, gMes, gAnio, genMes, genAnio, inv.fechaElaboracion, e.target.value)}
+                           disabled={savingId === inv.id}
+                           className="text-xs font-bold border border-slate-200 rounded px-2 py-1 w-24 outline-none focus:border-blue-500"
+                         />
+                       ) : (
+                         inv.consecutivo
+                       )}
+                     </td>
                     <td className="px-5 py-4">
                       <div className="font-bold text-slate-800">{inv.conjuntoNombre}</div>
                       <div className="text-[10px] text-slate-500">{inv.items?.length || 0} items</div>
@@ -413,16 +461,31 @@ export default function GestionPage() {
                       </td>
 
                     {/* ACCIONES */}
-                    <td className="px-5 py-4 text-right">
-                      {inv.status !== 'ANULADA' && (
-                        <button 
-                          onClick={() => handleAnular(inv.id)}
-                          className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors title='Anular Cuenta'"
-                        >
-                          <AlertCircle className="w-4 h-4" />
-                        </button>
-                      )}
-                    </td>
+                     <td className="px-5 py-4 text-right">
+                       <div className="flex justify-end gap-1">
+                         <button 
+                           onClick={() => handleDownloadPdf(inv)}
+                           disabled={isDownloading === inv.id}
+                           className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
+                           title="Descargar PDF"
+                         >
+                           {isDownloading === inv.id ? (
+                             <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                           ) : (
+                             <Download className="w-4 h-4" />
+                           )}
+                         </button>
+                         {inv.status !== 'ANULADA' && (
+                           <button 
+                             onClick={() => handleAnular(inv.id)}
+                             className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                             title="Anular Cuenta"
+                           >
+                             <AlertCircle className="w-4 h-4" />
+                           </button>
+                         )}
+                       </div>
+                     </td>
                   </tr>
                   );
                 })}

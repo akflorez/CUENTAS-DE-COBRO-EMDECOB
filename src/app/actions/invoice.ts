@@ -181,10 +181,25 @@ export async function updateInvoiceMetadata(
   gestionAnio: number,
   generacionMes: number,
   generacionAnio: number,
-  fechaElaboracion: Date | null
+  fechaElaboracion: Date | null,
+  consecutivo?: string
 ) {
   try {
     const prisma = getPrisma();
+    
+    // Si se está cambiando el consecutivo, verificar que no exista ya (si es diferente al actual)
+    if (consecutivo) {
+      const existing = await prisma.invoice.findFirst({
+        where: { 
+          consecutivo,
+          NOT: { id }
+        }
+      });
+      if (existing) {
+        throw new Error("El número de cuenta de cobro ya existe.");
+      }
+    }
+
     const updated = await (prisma.invoice as any).update({
       where: { id },
       data: {
@@ -192,7 +207,8 @@ export async function updateInvoiceMetadata(
         gestionAnio,
         generacionMes,
         generacionAnio,
-        fechaElaboracion
+        fechaElaboracion,
+        consecutivo: consecutivo || undefined
       }
     });
     try {
