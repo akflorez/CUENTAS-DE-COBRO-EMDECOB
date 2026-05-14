@@ -255,10 +255,23 @@ export default function GestionPage() {
   const handleAnular = async (id: string) => {
     if (!confirm('¿Estás seguro de que deseas anular esta cuenta de cobro?')) return;
     
+    const reflectInDashboard = confirm('¿Deseas que esta anulación se refleje en los totales del dashboard?\n\n- ACEPTAR: Se contará como anulación.\n- CANCELAR: Se ignorará completamente de las estadísticas.');
+    
     setSavingId(id);
-    const res = await updateInvoiceStatus(id, 'ANULADA', null, false, 0);
+    const invoice = invoices.find(i => i.id === id);
+    const currentObs = (invoice?.observacion || "").replace("[OMITIR_STATS]", "").trim();
+    const newObs = reflectInDashboard ? currentObs : `${currentObs} [OMITIR_STATS]`.trim();
+
+    const res = await updateInvoiceStatus(id, 'ANULADA', null, false, 0, newObs);
     if (res.success) {
-      setInvoices(prev => prev.map(i => i.id === id ? { ...i, status: 'ANULADA', fechaPago: null, validadoTesoreria: false, montoPagado: 0 } : i));
+      setInvoices(prev => prev.map(i => i.id === id ? { 
+        ...i, 
+        status: 'ANULADA', 
+        fechaPago: null, 
+        validadoTesoreria: false, 
+        montoPagado: 0,
+        observacion: newObs
+      } : i));
     }
     setSavingId(null);
   };

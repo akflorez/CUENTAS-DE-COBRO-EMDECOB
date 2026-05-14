@@ -363,8 +363,10 @@ export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | 
       // 2. Dashboard Snapshot Cards
       if (isInRange) {
         if (inv.status === 'ANULADA') {
-          stats.totalAnulado += inv.honorariosTotal;
-          stats.countAnulado++;
+          if (!inv.observacion?.includes("[OMITIR_STATS]")) {
+            stats.totalAnulado += inv.honorariosTotal;
+            stats.countAnulado++;
+          }
           // No sumamos a la meta útil si está anulado
         } else {
           stats.totalMetaHonorarios += inv.honorariosTotal; // Meta útil (Honorarios Netos)
