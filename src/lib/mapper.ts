@@ -28,6 +28,7 @@ export type MappedRecord = {
   estadoCobro: string; 
   gestionMes?: number;
   gestionAnio?: number;
+  fechaElaboracion?: Date | null;
   
   // Elementos de la tabla
   items: RecordItem[];

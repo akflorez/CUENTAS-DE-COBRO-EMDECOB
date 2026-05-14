@@ -96,7 +96,7 @@ export const InvoiceTemplate = React.forwardRef<HTMLDivElement, Props>(({ data }
         {/* Fecha derecha */}
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
           <p style={{ margin: 0, fontSize: '9px', fontWeight: 700, color: '#16a34a', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Fecha Emisión</p>
-          <p style={{ margin: 0, fontSize: '11px', fontWeight: 700, color: '#334155' }}>{formatDate(new Date())}</p>
+          <p style={{ margin: 0, fontSize: '11px', fontWeight: 700, color: '#334155' }}>{formatDate(data.fechaElaboracion || new Date())}</p>
         </div>
       </div>
 

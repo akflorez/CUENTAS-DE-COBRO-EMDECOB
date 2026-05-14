@@ -21,6 +21,7 @@ export default function GestionPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [filterGenMes, setFilterGenMes] = useState(0); // 0 = Todos
   const [filterGenAnio, setFilterGenAnio] = useState(0); // 0 = Todos
+  const [overrideFechaPdf, setOverrideFechaPdf] = useState("");
   const [isDownloading, setIsDownloading] = useState<string | null>(null);
   const templateRef = useRef<HTMLDivElement>(null);
   const [currentInvoiceForPdf, setCurrentInvoiceForPdf] = useState<any>(null);
@@ -86,10 +87,15 @@ export default function GestionPage() {
     }
     setSavingId(null);
   };
-
-  const handleDownloadPdf = async (invoice: any) => {
+   const handleDownloadPdf = async (invoice: any) => {
      setIsDownloading(invoice.id);
-     setCurrentInvoiceForPdf(invoice);
+     
+     // Aplicar override de fecha si existe (usando T12:00:00 para evitar problemas de timezone)
+     const invoiceWithOverride = overrideFechaPdf 
+       ? { ...invoice, fechaElaboracion: new Date(overrideFechaPdf + 'T12:00:00') } 
+       : invoice;
+
+     setCurrentInvoiceForPdf(invoiceWithOverride);
      
      // Pequeño delay para que React renderice el template oculto
      setTimeout(async () => {
@@ -113,11 +119,21 @@ export default function GestionPage() {
        const res = await getInvoices(1, 1000, dbConjunto, filterGenMes, filterGenAnio);
        if (!res.success) throw new Error(res.error);
        
-       const allInvoices = res.invoices;
+       let allInvoices = res.invoices;
        if (allInvoices.length === 0) {
          alert("No hay registros para descargar en este filtro.");
+         setIsDownloading(null);
          return;
        }
+
+       // Aplicar override de fecha a todo el lote si existe
+       if (overrideFechaPdf) {
+         allInvoices = allInvoices.map((inv: any) => ({
+           ...inv,
+           fechaElaboracion: new Date(overrideFechaPdf + 'T12:00:00')
+         }));
+    
+  }
 
        // Preparar contenedor oculto para renderizado masivo
        // Usamos un div temporal
@@ -298,28 +314,41 @@ export default function GestionPage() {
             />
             
             <div className="flex gap-2">
-               {(dbConjunto !== "Todos" || filterGenMes !== 0 || filterGenAnio !== 0) && (
-                 <button 
-                   onClick={() => { setDbConjunto("Todos"); setFilterGenMes(0); setFilterGenAnio(0); setPage(1); }}
-                   className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
-                   title="Limpiar Filtros"
-                 >
-                   <X className="w-4 h-4" />
-                 </button>
-               )}
-               
-               <button 
-                 onClick={handleDownloadBulkZip}
-                 disabled={isDownloading === "BULK" || invoices.length === 0}
-                 className="px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-bold flex items-center hover:bg-slate-800 transition-all shadow-md shadow-slate-900/20 disabled:opacity-50"
-               >
-                 {isDownloading === "BULK" ? (
-                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                 ) : (
-                   <FileArchive className="w-4 h-4 mr-2" />
+               <div className="flex flex-col">
+                 <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Fecha Emisión PDF</label>
+                 <input 
+                   type="date"
+                   value={overrideFechaPdf}
+                   onChange={(e) => setOverrideFechaPdf(e.target.value)}
+                   className="text-sm border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 bg-white h-[38px]"
+                   title="Si se establece, esta fecha aparecerá en el PDF descargado"
+                 />
+               </div>
+
+               <div className="flex items-end gap-2">
+                 {(dbConjunto !== "Todos" || filterGenMes !== 0 || filterGenAnio !== 0 || overrideFechaPdf !== "") && (
+                   <button 
+                     onClick={() => { setDbConjunto("Todos"); setFilterGenMes(0); setFilterGenAnio(0); setOverrideFechaPdf(""); setPage(1); }}
+                     className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors h-[38px]"
+                     title="Limpiar Filtros"
+                   >
+                     <X className="w-4 h-4" />
+                   </button>
                  )}
-                 Descargar Lote (ZIP)
-               </button>
+                 
+                 <button 
+                   onClick={handleDownloadBulkZip}
+                   disabled={isDownloading === "BULK" || invoices.length === 0}
+                   className="px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-bold flex items-center hover:bg-slate-800 transition-all shadow-md shadow-slate-900/20 disabled:opacity-50 h-[38px]"
+                 >
+                   {isDownloading === "BULK" ? (
+                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                   ) : (
+                     <FileArchive className="w-4 h-4 mr-2" />
+                   )}
+                   Descargar Lote (ZIP)
+                 </button>
+               </div>
             </div>
           </div>
         </div>
@@ -370,7 +399,7 @@ export default function GestionPage() {
                   <th className="px-5 py-4 font-semibold text-center">Validación</th>
                   <th className="px-5 py-4 font-semibold text-center">Fecha Pago</th>
                   <th className="px-5 py-4 font-semibold text-center">Observación</th>
-                  <th className="px-5 py-4 font-semibold text-right">Acciones</th>
+                  <th className="px-5 py-4 font-semibold text-right sticky right-0 bg-slate-50 shadow-[-10px_0_10px_-10px_rgba(0,0,0,0.1)]">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 min-h-[300px]">
@@ -385,7 +414,7 @@ export default function GestionPage() {
                   const genAnio = inv.generacionAnio || defaultAnio;
 
                   return (
-                  <tr key={inv.id} className={`hover:bg-slate-50 transition-colors ${savingId === inv.id ? 'opacity-50' : ''} ${inv.status === 'ANULADA' ? 'bg-slate-50 opacity-60' : ''}`}>
+                  <tr key={inv.id} className={`group hover:bg-slate-50 transition-colors ${savingId === inv.id ? 'opacity-50' : ''} ${inv.status === 'ANULADA' ? 'bg-slate-50 opacity-60' : ''}`}>
                     <td className="px-5 py-4 font-medium text-slate-700 whitespace-nowrap">
                        {isAdmin ? (
                          <input 
@@ -569,7 +598,7 @@ export default function GestionPage() {
                       </td>
 
                     {/* ACCIONES */}
-                     <td className="px-5 py-4 text-right">
+                     <td className="px-5 py-4 text-right sticky right-0 bg-white group-hover:bg-slate-50 shadow-[-10px_0_10px_-10px_rgba(0,0,0,0.1)] transition-colors">
                        <div className="flex justify-end gap-1">
                          <button 
                            onClick={() => handleDownloadPdf(inv)}
