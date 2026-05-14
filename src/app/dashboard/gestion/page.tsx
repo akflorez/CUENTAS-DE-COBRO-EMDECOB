@@ -56,7 +56,8 @@ export default function GestionPage() {
   useEffect(() => {
     loadData();
     if (typeof window !== 'undefined') {
-      setIsAdmin(localStorage.getItem('currentUser') === 'EMDECOB');
+      const user = localStorage.getItem('currentUser');
+      setIsAdmin(user === 'EMDECOB' || user === 'PROPIEDAD HORIZONTAL');
     }
   }, [loadData]);
 

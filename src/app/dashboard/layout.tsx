@@ -119,10 +119,12 @@ export default function DashboardLayout({
           </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-100">
-              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white font-bold text-xs flex items-center justify-center shadow-sm">
-                PH
+              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white font-bold text-xs flex items-center justify-center shadow-sm uppercase">
+                {(typeof window !== 'undefined' ? localStorage.getItem('currentUser') || 'PH' : 'PH').substring(0, 2)}
               </div>
-              <span className="text-xs font-semibold text-emerald-800 hidden sm:block">Propiedad Horizontal</span>
+              <span className="text-xs font-semibold text-emerald-800 hidden sm:block capitalize">
+                {(typeof window !== 'undefined' ? localStorage.getItem('currentUser') || 'Propiedad Horizontal' : 'Propiedad Horizontal').toLowerCase()}
+              </span>
             </div>
           </div>
         </header>
