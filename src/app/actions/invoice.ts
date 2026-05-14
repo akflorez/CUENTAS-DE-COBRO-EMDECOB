@@ -73,12 +73,18 @@ export async function saveInvoiceRecord(data: MappedRecord) {
   }
 }
 
-export async function getInvoices(page: number = 1, pageSize: number = 20, conjunto?: string) {
+export async function getInvoices(page: number = 1, pageSize: number = 20, conjunto?: string, genMes?: number, genAnio?: number) {
   try {
     const prisma = getPrisma();
     const where: any = {};
     if (conjunto && conjunto !== "Todos") {
       where.conjuntoNombre = conjunto;
+    }
+    if (genMes && genMes !== 0) {
+      where.generacionMes = genMes;
+    }
+    if (genAnio && genAnio !== 0) {
+      where.generacionAnio = genAnio;
     }
 
     const timeoutPromise = new Promise((_, reject) => 

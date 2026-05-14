@@ -2,9 +2,9 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import { getInvoices, updateInvoiceStatus, getConjuntos, updateInvoiceMetadata } from "@/app/actions/invoice";
-import { ListChecks, Clock, CheckCircle2, AlertCircle, Building2, ChevronLeft, ChevronRight, Search, X, Download, FileText } from "lucide-react";
+import { ListChecks, Clock, CheckCircle2, AlertCircle, Building2, ChevronLeft, ChevronRight, Search, X, Download, FileText, FileArchive } from "lucide-react";
 import SearchableSelect from "@/components/SearchableSelect";
-import { downloadPdf } from "@/lib/pdfGenerator";
+import { downloadPdf, downloadPdfsAsZip } from "@/lib/pdfGenerator";
 import { InvoiceTemplate } from "@/components/InvoiceTemplate";
 
 export default function GestionPage() {
@@ -19,6 +19,8 @@ export default function GestionPage() {
   const [error, setError] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [filterGenMes, setFilterGenMes] = useState(0); // 0 = Todos
+  const [filterGenAnio, setFilterGenAnio] = useState(0); // 0 = Todos
   const [isDownloading, setIsDownloading] = useState<string | null>(null);
   const templateRef = useRef<HTMLDivElement>(null);
   const [currentInvoiceForPdf, setCurrentInvoiceForPdf] = useState<any>(null);
@@ -28,7 +30,7 @@ export default function GestionPage() {
     setError(null);
     try {
       const [invRes, conjRes] = await Promise.all([
-        getInvoices(page, 20, dbConjunto),
+        getInvoices(page, 20, dbConjunto, filterGenMes, filterGenAnio),
         getConjuntos()
       ]);
       
@@ -39,7 +41,7 @@ export default function GestionPage() {
       } else {
         setError(invRes.error || "Error cargando facturas.");
       }
-
+ 
       if (conjRes.success) {
         setConjuntos(conjRes.conjuntos || []);
       }
@@ -48,7 +50,7 @@ export default function GestionPage() {
       console.error(err);
     }
     setLoading(false);
-  }, [page, dbConjunto]);
+  }, [page, dbConjunto, filterGenMes, filterGenAnio]);
 
   useEffect(() => {
     loadData();
@@ -103,6 +105,64 @@ export default function GestionPage() {
        setIsDownloading(null);
      }, 500);
    };
+
+   const handleDownloadBulkZip = async () => {
+     setIsDownloading("BULK");
+     try {
+       // Obtener todos los registros del filtro actual (sin paginación, o página muy grande)
+       const res = await getInvoices(1, 1000, dbConjunto, filterGenMes, filterGenAnio);
+       if (!res.success) throw new Error(res.error);
+       
+       const allInvoices = res.invoices;
+       if (allInvoices.length === 0) {
+         alert("No hay registros para descargar en este filtro.");
+         return;
+       }
+
+       // Preparar contenedor oculto para renderizado masivo
+       // Usamos un div temporal
+       const container = document.createElement('div');
+       container.style.position = 'absolute';
+       container.style.left = '-10000px';
+       container.style.width = '700px';
+       document.body.appendChild(container);
+
+       const elements: HTMLElement[] = [];
+       const names: string[] = [];
+
+       // Renderizar cada uno y capturar el elemento
+       // Usamos createRoot si estamos en React 18, pero aquí es más fácil si inyectamos un componente temporal o similar.
+       // Alternativa: usar un portal o un estado con todos los invoices y hiddenRefs.
+       // Para simplicidad en este componente, usaremos el mismo templateRef pero iterando (o un contenedor dedicado).
+       
+       alert(`Iniciando generación de ${allInvoices.length} documentos. Por favor espera...`);
+       
+       // Seteamos un estado temporal para renderizar TODOS los del lote en el DOM oculto
+       setBatchForZip(allInvoices);
+       
+       // Delay para render
+       setTimeout(async () => {
+         const batchElements = batchRefs.current;
+         const finalElements = allInvoices.map((_: any, i: number) => batchElements[i]).filter(Boolean) as HTMLElement[];
+         const finalNames = allInvoices.map((inv: any) => `${inv.consecutivo}_${inv.conjuntoNombre}.pdf`.replace(/[^a-zA-Z0-9_.-]/g, '_'));
+         
+         const zipName = `Cuentas_Recaudo_${dbConjunto}_${filterGenMes}_${filterGenAnio}.zip`;
+         await downloadPdfsAsZip(finalElements, finalNames, zipName, 'letter', 'portrait');
+         
+         setBatchForZip([]);
+         setIsDownloading(null);
+         document.body.removeChild(container);
+       }, 2000);
+
+     } catch (err) {
+       console.error("Error generating ZIP:", err);
+       alert("Error al generar el ZIP");
+       setIsDownloading(null);
+     }
+   };
+
+   const [batchForZip, setBatchForZip] = useState<any[]>([]);
+   const batchRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
 
   const handleStatusChange = async (id: string, newStatus: string) => {
     setSavingId(id);
@@ -187,6 +247,14 @@ export default function GestionPage() {
         <div ref={templateRef}>
            {currentInvoiceForPdf && <InvoiceTemplate data={currentInvoiceForPdf} />}
         </div>
+        {/* Contenedor para lote masivo */}
+        <div id="batch-container">
+           {batchForZip.map((inv, idx) => (
+             <div key={inv.id} ref={el => { batchRefs.current[idx] = el; }}>
+               <InvoiceTemplate data={inv} />
+             </div>
+           ))}
+        </div>
       </div>
       <div className="mb-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -198,21 +266,61 @@ export default function GestionPage() {
             </p>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+               <select 
+                 value={filterGenMes}
+                 onChange={(e) => { setFilterGenMes(parseInt(e.target.value)); setPage(1); }}
+                 className="text-sm border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+               >
+                 <option value={0}>Mes Gen: Todos</option>
+                 {["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"].map((m, idx) => (
+                   <option key={idx + 1} value={idx + 1}>{m}</option>
+                 ))}
+               </select>
+               <select 
+                 value={filterGenAnio}
+                 onChange={(e) => { setFilterGenAnio(parseInt(e.target.value)); setPage(1); }}
+                 className="text-sm border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+               >
+                 <option value={0}>Año Gen: Todos</option>
+                 {[2024, 2025, 2026, 2027].map(y => (
+                   <option key={y} value={y}>{y}</option>
+                 ))}
+               </select>
+            </div>
+ 
             <SearchableSelect 
               label="Filtrar por Conjunto"
               options={conjuntos}
               value={dbConjunto}
               onChange={(val) => { setDbConjunto(val); setPage(1); }}
             />
-            {dbConjunto !== "Todos" && (
-              <button 
-                onClick={() => { setDbConjunto("Todos"); setPage(1); }}
-                className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
+            
+            <div className="flex gap-2">
+               {(dbConjunto !== "Todos" || filterGenMes !== 0 || filterGenAnio !== 0) && (
+                 <button 
+                   onClick={() => { setDbConjunto("Todos"); setFilterGenMes(0); setFilterGenAnio(0); setPage(1); }}
+                   className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                   title="Limpiar Filtros"
+                 >
+                   <X className="w-4 h-4" />
+                 </button>
+               )}
+               
+               <button 
+                 onClick={handleDownloadBulkZip}
+                 disabled={isDownloading === "BULK" || invoices.length === 0}
+                 className="px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-bold flex items-center hover:bg-slate-800 transition-all shadow-md shadow-slate-900/20 disabled:opacity-50"
+               >
+                 {isDownloading === "BULK" ? (
+                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                 ) : (
+                   <FileArchive className="w-4 h-4 mr-2" />
+                 )}
+                 Descargar Lote (ZIP)
+               </button>
+            </div>
           </div>
         </div>
       </div>
