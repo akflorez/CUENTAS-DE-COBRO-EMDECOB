@@ -625,9 +625,18 @@ export default function GestionPage() {
                           <input 
                             type="number"
                             className="w-24 text-right text-xs font-bold bg-white border border-slate-200 rounded px-2 py-1 shadow-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
-                            value={inv.montoPagado || 0}
-                            onChange={(e) => handleMontoChange(inv.id, e.target.value)}
+                            value={inv.montoPagado === 0 ? 0 : (inv.montoPagado || "")}
+                            onChange={(e) => {
+                              const newVal = e.target.value;
+                              const numericVal = newVal === "" ? null : parseFloat(newVal);
+                              setInvoices(invoices.map(i => i.id === inv.id ? { ...i, montoPagado: isNaN(numericVal as any) ? null : numericVal } : i));
+                            }}
                             onBlur={(e) => handleMontoChange(inv.id, e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                (e.target as HTMLInputElement).blur();
+                              }
+                            }}
                             disabled={savingId === inv.id}
                           />
                         </div>
