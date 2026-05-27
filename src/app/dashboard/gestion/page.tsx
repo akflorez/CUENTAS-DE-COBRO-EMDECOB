@@ -29,6 +29,8 @@ export default function GestionPage() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [searchValor, setSearchValor] = useState("");
+  const [debouncedValor, setDebouncedValor] = useState("");
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -41,12 +43,23 @@ export default function GestionPage() {
     };
   }, [searchTerm]);
 
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValor(searchValor);
+      setPage(1);
+    }, 400);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [searchValor]);
+
   const loadData = React.useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const [invRes, conjRes] = await Promise.all([
-        getInvoices(page, 20, dbConjunto, filterGenMes, filterGenAnio, debouncedSearch),
+        getInvoices(page, 20, dbConjunto, filterGenMes, filterGenAnio, debouncedSearch, debouncedValor),
         getConjuntos()
       ]);
       
@@ -66,7 +79,7 @@ export default function GestionPage() {
       console.error(err);
     }
     setLoading(false);
-  }, [page, dbConjunto, filterGenMes, filterGenAnio, debouncedSearch]);
+  }, [page, dbConjunto, filterGenMes, filterGenAnio, debouncedSearch, debouncedValor]);
 
   useEffect(() => {
     loadData();
@@ -132,7 +145,7 @@ export default function GestionPage() {
      setIsDownloading("BULK");
      try {
        // Obtener todos los registros del filtro actual (sin paginación, o página muy grande)
-       const res = await getInvoices(1, 1000, dbConjunto, filterGenMes, filterGenAnio, debouncedSearch);
+       const res = await getInvoices(1, 1000, dbConjunto, filterGenMes, filterGenAnio, debouncedSearch, debouncedValor);
        if (!res.success) throw new Error(res.error);
        
        let allInvoices = res.invoices;
@@ -196,7 +209,7 @@ export default function GestionPage() {
     const handleExportExcel = async () => {
       setIsDownloading("EXCEL");
       try {
-        const res = await getInvoices(1, 2000, dbConjunto, filterGenMes, filterGenAnio, debouncedSearch);
+        const res = await getInvoices(1, 2000, dbConjunto, filterGenMes, filterGenAnio, debouncedSearch, debouncedValor);
         if (!res.success) throw new Error(res.error);
         
         const allInvoices = res.invoices;
@@ -364,12 +377,33 @@ export default function GestionPage() {
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Buscar consecutivo o valor..."
-                className="pl-9 pr-8 py-2 text-sm border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500 bg-white w-56 h-[38px] transition-all focus:border-emerald-500"
+                placeholder="N° Cuenta..."
+                className="pl-9 pr-8 py-2 text-sm border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500 bg-white w-40 h-[38px] transition-all focus:border-emerald-500"
               />
               {searchTerm && (
                 <button
                   onClick={() => setSearchTerm("")}
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+
+            <div className="relative">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400 font-bold text-xs">
+                $
+              </span>
+              <input
+                type="text"
+                value={searchValor}
+                onChange={(e) => setSearchValor(e.target.value)}
+                placeholder="Filtrar por Valor..."
+                className="pl-7 pr-8 py-2 text-sm border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500 bg-white w-44 h-[38px] transition-all focus:border-emerald-500"
+              />
+              {searchValor && (
+                <button
+                  onClick={() => setSearchValor("")}
                   className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 transition-colors"
                 >
                   <X className="w-4 h-4" />
@@ -420,9 +454,9 @@ export default function GestionPage() {
                </div>
 
                <div className="flex items-end gap-2">
-                 {(dbConjunto !== "Todos" || filterGenMes !== 0 || filterGenAnio !== 0 || overrideFechaPdf !== "" || searchTerm !== "") && (
+                 {(dbConjunto !== "Todos" || filterGenMes !== 0 || filterGenAnio !== 0 || overrideFechaPdf !== "" || searchTerm !== "" || searchValor !== "") && (
                    <button 
-                     onClick={() => { setDbConjunto("Todos"); setFilterGenMes(0); setFilterGenAnio(0); setOverrideFechaPdf(""); setSearchTerm(""); setPage(1); }}
+                     onClick={() => { setDbConjunto("Todos"); setFilterGenMes(0); setFilterGenAnio(0); setOverrideFechaPdf(""); setSearchTerm(""); setSearchValor(""); setPage(1); }}
                      className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors h-[38px]"
                      title="Limpiar Filtros"
                    >

@@ -79,7 +79,8 @@ export async function getInvoices(
   conjunto?: string, 
   genMes?: number, 
   genAnio?: number,
-  search?: string
+  search?: string,
+  valor?: string
 ) {
   try {
     const prisma = getPrisma();
@@ -95,16 +96,14 @@ export async function getInvoices(
     }
 
     if (search && search.trim() !== "") {
-      const searchTrimmed = search.trim();
-      const orConditions: any[] = [
-        {
-          consecutivo: {
-            contains: searchTrimmed,
-            mode: 'insensitive'
-          }
-        }
-      ];
+      where.consecutivo = {
+        contains: search.trim(),
+        mode: 'insensitive'
+      };
+    }
 
+    if (valor && valor.trim() !== "") {
+      const searchTrimmed = valor.trim();
       // Try parsing direct float
       const parsedDirect = parseFloat(searchTrimmed);
       // Try parsing with clean dots and symbols (common in Colombian currency format: e.g. 150.000 or $150.000)
@@ -120,16 +119,12 @@ export async function getInvoices(
       }
 
       if (numericValues.length > 0) {
-        numericValues.forEach(val => {
-          orConditions.push(
-            { granTotal: val },
-            { honorariosTotal: val },
-            { montoPagado: val }
-          );
-        });
+        where.OR = numericValues.map(val => ([
+          { granTotal: val },
+          { honorariosTotal: val },
+          { montoPagado: val }
+        ])).flat();
       }
-
-      where.OR = orConditions;
     }
 
     const timeoutPromise = new Promise((_, reject) => 
