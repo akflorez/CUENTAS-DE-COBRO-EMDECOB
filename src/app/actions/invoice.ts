@@ -73,7 +73,14 @@ export async function saveInvoiceRecord(data: MappedRecord) {
   }
 }
 
-export async function getInvoices(page: number = 1, pageSize: number = 20, conjunto?: string, genMes?: number, genAnio?: number) {
+export async function getInvoices(
+  page: number = 1, 
+  pageSize: number = 20, 
+  conjunto?: string, 
+  genMes?: number, 
+  genAnio?: number,
+  search?: string
+) {
   try {
     const prisma = getPrisma();
     const where: any = {};
@@ -85,6 +92,44 @@ export async function getInvoices(page: number = 1, pageSize: number = 20, conju
     }
     if (genAnio && genAnio !== 0) {
       where.generacionAnio = genAnio;
+    }
+
+    if (search && search.trim() !== "") {
+      const searchTrimmed = search.trim();
+      const orConditions: any[] = [
+        {
+          consecutivo: {
+            contains: searchTrimmed,
+            mode: 'insensitive'
+          }
+        }
+      ];
+
+      // Try parsing direct float
+      const parsedDirect = parseFloat(searchTrimmed);
+      // Try parsing with clean dots and symbols (common in Colombian currency format: e.g. 150.000 or $150.000)
+      const cleanSearch = searchTrimmed.replace(/[\$\s]/g, '').replace(/\./g, '').replace(/,/g, '');
+      const parsedCleaned = parseFloat(cleanSearch);
+
+      const numericValues: number[] = [];
+      if (!isNaN(parsedDirect)) {
+        numericValues.push(parsedDirect);
+      }
+      if (!isNaN(parsedCleaned) && parsedCleaned !== parsedDirect) {
+        numericValues.push(parsedCleaned);
+      }
+
+      if (numericValues.length > 0) {
+        numericValues.forEach(val => {
+          orConditions.push(
+            { granTotal: val },
+            { honorariosTotal: val },
+            { montoPagado: val }
+          );
+        });
+      }
+
+      where.OR = orConditions;
     }
 
     const timeoutPromise = new Promise((_, reject) => 
