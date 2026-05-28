@@ -104,40 +104,31 @@ export async function getInvoices(
 
     if (valor && valor.trim() !== "") {
       const searchTrimmed = valor.trim();
-      // Try parsing direct float
-      const parsedDirect = parseFloat(searchTrimmed);
-      // Try parsing with clean dots and symbols (common in Colombian currency format: e.g. 150.000 or $150.000)
+      // Clean dots, spaces, and currency symbols (common in Colombian currency format: e.g. 150.000 or $150.000)
       const cleanSearch = searchTrimmed.replace(/[\$\s]/g, '').replace(/\./g, '').replace(/,/g, '');
-      const parsedCleaned = parseFloat(cleanSearch);
+      const N = parseInt(cleanSearch);
 
-      const numericValues: number[] = [];
-      if (!isNaN(parsedDirect)) {
-        numericValues.push(parsedDirect);
-      }
-      if (!isNaN(parsedCleaned) && parsedCleaned !== parsedDirect) {
-        numericValues.push(parsedCleaned);
-      }
+      if (!isNaN(N)) {
+        const queryStr = cleanSearch;
+        const L = queryStr.length;
+        const conditions: any[] = [];
 
-      if (numericValues.length > 0) {
-        where.OR = numericValues.map(val => ([
-          {
-            granTotal: {
-              gte: val - 0.5,
-              lte: val + 0.5
-            }
-          },
-          {
-            honorariosTotal: {
-              gte: val - 0.5,
-              lte: val + 0.5
-            }
-          },
-          {
-            montoPagado: {
-              gte: val - 0.5,
-              lte: val + 0.5
-            }
-          }
+        // Generate ranges from the current length up to 10 digits
+        for (let D = L; D <= 10; D++) {
+          const multiplier = Math.pow(10, D - L);
+          const lowerBound = N * multiplier;
+          const upperBound = (N + 1) * multiplier;
+          
+          conditions.push({
+            gte: lowerBound - 0.5,
+            lt: upperBound - 0.5
+          });
+        }
+
+        where.OR = conditions.map(cond => ([
+          { granTotal: cond },
+          { honorariosTotal: cond },
+          { montoPagado: cond }
         ])).flat();
       }
     }
