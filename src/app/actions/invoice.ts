@@ -145,7 +145,8 @@ export async function getInvoices(
           take: pageSize,
           orderBy: { createdAt: 'desc' },
           include: {
-            items: true
+            items: true,
+            payments: true
           }
         }),
         (prisma.invoice as any).count({ where })
@@ -500,3 +501,124 @@ export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | 
     return JSON.parse(JSON.stringify({ success: false, error: error.message }));
   }
 }
+
+export async function addPayment(
+  invoiceId: string,
+  monto: number,
+  tipo: string,
+  fecha: Date | string,
+  metodo?: string,
+  observacion?: string
+) {
+  try {
+    const prisma = getPrisma();
+    
+    // 1. Create the payment
+    const payment = await (prisma.payment as any).create({
+      data: {
+        invoiceId,
+        monto,
+        tipo,
+        fecha: new Date(fecha),
+        metodo,
+        observacion: observacion || ""
+      }
+    });
+
+    // 2. Recalculate invoice totals
+    await recalculateInvoiceState(invoiceId, prisma);
+
+    try {
+      revalidatePath('/dashboard/gestion');
+      revalidatePath('/dashboard');
+    } catch (e) { console.warn('revalidatePath error:', e); }
+
+    return JSON.parse(JSON.stringify({ success: true, payment }));
+  } catch (error: any) {
+    console.error('Error adding payment:', error);
+    return JSON.parse(JSON.stringify({ success: false, error: error.message }));
+  }
+}
+
+export async function deletePayment(paymentId: string) {
+  try {
+    const prisma = getPrisma();
+
+    // 1. Find the payment to get the invoiceId
+    const payment = await (prisma.payment as any).findUnique({
+      where: { id: paymentId }
+    });
+
+    if (!payment) {
+      return JSON.parse(JSON.stringify({ success: false, error: 'Payment not found' }));
+    }
+
+    const invoiceId = payment.invoiceId;
+
+    // 2. Delete the payment
+    await (prisma.payment as any).delete({
+      where: { id: paymentId }
+    });
+
+    // 3. Recalculate invoice state
+    await recalculateInvoiceState(invoiceId, prisma);
+
+    try {
+      revalidatePath('/dashboard/gestion');
+      revalidatePath('/dashboard');
+    } catch (e) { console.warn('revalidatePath error:', e); }
+
+    return JSON.parse(JSON.stringify({ success: true }));
+  } catch (error: any) {
+    console.error('Error deleting payment:', error);
+    return JSON.parse(JSON.stringify({ success: false, error: error.message }));
+  }
+}
+
+async function recalculateInvoiceState(invoiceId: string, prisma: any) {
+  // Get all payments for this invoice
+  const payments = await (prisma.payment as any).findMany({
+    where: { invoiceId }
+  });
+
+  const invoice = await prisma.invoice.findUnique({
+    where: { id: invoiceId }
+  });
+
+  if (!invoice) return;
+
+  let totalRecaudado = 0;
+  let totalAjustes = 0;
+
+  for (const p of payments) {
+    if (p.tipo === 'RECAUDO' || p.tipo === 'CRUCE_ANTICIPO') {
+      totalRecaudado += p.monto;
+    } else if (p.tipo === 'DESCUENTO' || p.tipo === 'AJUSTE') {
+      totalAjustes += p.monto;
+    }
+  }
+
+  const totalCreditos = totalRecaudado + totalAjustes;
+  const isPaid = totalCreditos >= invoice.granTotal - 0.5;
+
+  let newStatus = invoice.status;
+  if (invoice.status !== 'ANULADA') {
+    newStatus = isPaid ? 'PAGADA' : 'PENDIENTE';
+  }
+
+  let latestPaymentDate = null;
+  if (payments.length > 0) {
+    const sorted = [...payments].sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+    latestPaymentDate = sorted[0].fecha;
+  }
+
+  await prisma.invoice.update({
+    where: { id: invoiceId },
+    data: {
+      montoPagado: totalRecaudado,
+      status: newStatus,
+      fechaPago: isPaid ? (latestPaymentDate || new Date()) : null
+    }
+  });
+}
+

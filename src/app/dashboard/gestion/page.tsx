@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
-import { getInvoices, updateInvoiceStatus, getConjuntos, updateInvoiceMetadata } from "@/app/actions/invoice";
+import { getInvoices, updateInvoiceStatus, getConjuntos, updateInvoiceMetadata, addPayment, deletePayment } from "@/app/actions/invoice";
 import { ListChecks, Clock, CheckCircle2, AlertCircle, Building2, ChevronLeft, ChevronRight, Search, X, Download, FileText, FileArchive, FileSpreadsheet } from "lucide-react";
 import SearchableSelect from "@/components/SearchableSelect";
 import { downloadPdf, downloadPdfsAsZip } from "@/lib/pdfGenerator";
@@ -31,6 +31,15 @@ export default function GestionPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [searchValor, setSearchValor] = useState("");
   const [debouncedValor, setDebouncedValor] = useState("");
+
+  const [selectedInvoiceForPayments, setSelectedInvoiceForPayments] = useState<any | null>(null);
+  const [isPaymentsModalOpen, setIsPaymentsModalOpen] = useState(false);
+  const [newPaymentMonto, setNewPaymentMonto] = useState("");
+  const [newPaymentTipo, setNewPaymentTipo] = useState("RECAUDO");
+  const [newPaymentFecha, setNewPaymentFecha] = useState(new Date().toISOString().split('T')[0]);
+  const [newPaymentMetodo, setNewPaymentMetodo] = useState("Transferencia");
+  const [newPaymentObs, setNewPaymentObs] = useState("");
+  const [isSavingPayment, setIsSavingPayment] = useState(false);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -266,17 +275,80 @@ export default function GestionPage() {
     setSavingId(null);
   };
 
-  const handleMontoChange = async (id: string, val: string) => {
-    const numericVal = parseFloat(val) || 0;
-    const invoice = invoices.find(i => i.id === id);
-    if (!invoice) return;
+  const openPaymentsModal = (invoice: any) => {
+    setSelectedInvoiceForPayments(invoice);
+    setNewPaymentMonto("");
+    setNewPaymentTipo("RECAUDO");
+    setNewPaymentFecha(new Date().toISOString().split('T')[0]);
+    setNewPaymentMetodo("Transferencia");
+    setNewPaymentObs("");
+    setIsPaymentsModalOpen(true);
+  };
 
-    setSavingId(id);
-    const res = await updateInvoiceStatus(id, invoice.status, invoice.fechaPago, invoice.validadoTesoreria, numericVal);
-    if (res.success) {
-      setInvoices(invoices.map(i => i.id === id ? { ...i, montoPagado: numericVal } : i));
+  const handleAddPayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedInvoiceForPayments) return;
+    
+    const monto = parseFloat(newPaymentMonto);
+    if (isNaN(monto)) {
+      alert("Por favor ingresa un monto válido");
+      return;
     }
-    setSavingId(null);
+
+    setIsSavingPayment(true);
+    const res = await addPayment(
+      selectedInvoiceForPayments.id,
+      monto,
+      newPaymentTipo,
+      newPaymentFecha,
+      newPaymentTipo === 'RECAUDO' ? newPaymentMetodo : undefined,
+      newPaymentObs
+    );
+
+    if (res.success) {
+      // Refresh local invoice state
+      const updatedInvoiceRes = await getInvoices(page, 20, dbConjunto, filterGenMes, filterGenAnio, debouncedSearch, debouncedValor);
+      if (updatedInvoiceRes.success) {
+        setInvoices(updatedInvoiceRes.invoices || []);
+        
+        // Find the updated invoice in the new list to update modal view
+        const updatedInvoice = updatedInvoiceRes.invoices.find((i: any) => i.id === selectedInvoiceForPayments.id);
+        if (updatedInvoice) {
+          setSelectedInvoiceForPayments(updatedInvoice);
+        }
+      }
+      // Reset form
+      setNewPaymentMonto("");
+      setNewPaymentObs("");
+    } else {
+      alert(res.error || "Error al agregar abono");
+    }
+    setIsSavingPayment(false);
+  };
+
+  const handleDeletePayment = async (paymentId: string) => {
+    if (!confirm("¿Estás seguro de que deseas eliminar este abono/ajuste?")) return;
+
+    setIsSavingPayment(true);
+    const res = await deletePayment(paymentId);
+    if (res.success) {
+      // Refresh local invoice state
+      const updatedInvoiceRes = await getInvoices(page, 20, dbConjunto, filterGenMes, filterGenAnio, debouncedSearch, debouncedValor);
+      if (updatedInvoiceRes.success) {
+        setInvoices(updatedInvoiceRes.invoices || []);
+        
+        // Find the updated invoice in the new list to update modal view
+        const updatedInvoice = updatedInvoiceRes.invoices.find((i: any) => i.id === selectedInvoiceForPayments.id);
+        if (updatedInvoice) {
+          setSelectedInvoiceForPayments(updatedInvoice);
+        } else {
+          setIsPaymentsModalOpen(false);
+        }
+      }
+    } else {
+      alert(res.error || "Error al eliminar abono");
+    }
+    setIsSavingPayment(false);
   };
 
   const handleAnular = async (id: string) => {
@@ -689,25 +761,43 @@ export default function GestionPage() {
                     {/* MONTO RECAUDADO */}
                     <td className="px-5 py-4 text-center">
                       {inv.status !== 'ANULADA' ? (
-                        <div className="flex items-center justify-center">
-                          <span className="text-xs mr-1 text-slate-400">$</span>
-                          <input 
-                            type="number"
-                            className="w-24 text-right text-xs font-bold bg-white border border-slate-200 rounded px-2 py-1 shadow-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
-                            value={inv.montoPagado === 0 ? 0 : (inv.montoPagado || "")}
-                            onChange={(e) => {
-                              const newVal = e.target.value;
-                              const numericVal = newVal === "" ? null : parseFloat(newVal);
-                              setInvoices(invoices.map(i => i.id === inv.id ? { ...i, montoPagado: isNaN(numericVal as any) ? null : numericVal } : i));
-                            }}
-                            onBlur={(e) => handleMontoChange(inv.id, e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                (e.target as HTMLInputElement).blur();
-                              }
-                            }}
-                            disabled={savingId === inv.id}
-                          />
+                        <div className="flex flex-col items-center gap-1">
+                          <button
+                            onClick={() => openPaymentsModal(inv)}
+                            className="text-xs font-bold text-slate-800 hover:text-emerald-600 transition-colors flex items-center justify-center gap-1 group bg-slate-50 border border-slate-200 rounded px-2.5 py-1 hover:border-emerald-500 shadow-sm"
+                            title="Ver/Registrar Abonos"
+                          >
+                            <span>
+                              {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(inv.montoPagado || 0)}
+                            </span>
+                          </button>
+                          
+                          {/* Saldo Pendiente o Anticipo */}
+                          {(() => {
+                            const totalAjustes = inv.payments?.filter((p: any) => p.tipo === 'DESCUENTO' || p.tipo === 'AJUSTE').reduce((sum: number, p: any) => sum + p.monto, 0) || 0;
+                            const totalCreditos = (inv.montoPagado || 0) + totalAjustes;
+                            const balance = inv.granTotal - totalCreditos;
+                            
+                            if (balance > 0.5) {
+                              return (
+                                <span className="text-[10px] font-semibold text-rose-500 bg-rose-50 border border-rose-100 px-1.5 py-0.5 rounded">
+                                  Falta: {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(balance)}
+                                </span>
+                              );
+                            } else if (balance < -0.5) {
+                              return (
+                                <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded">
+                                  Anticipo: {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(Math.abs(balance))}
+                                </span>
+                              );
+                            } else {
+                              return (
+                                <span className="text-[9px] font-bold text-blue-600 bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded uppercase tracking-wider">
+                                  Saldada
+                                </span>
+                              );
+                            }
+                          })()}
                         </div>
                       ) : (
                         <span className="text-xs text-slate-400 font-bold opacity-30">$ 0</span>
@@ -837,6 +927,233 @@ export default function GestionPage() {
           </div>
         )}
       </div>
+
+      {/* Modal de Historial de Abonos y Ajustes */}
+      {isPaymentsModalOpen && selectedInvoiceForPayments && (
+        <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-50 animate-in fade-in duration-200">
+          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-2xl mx-4 overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-lg">Historial de Abonos y Ajustes</h3>
+                <p className="text-slate-400 text-xs mt-0.5">
+                  Cuenta: <span className="text-emerald-400 font-bold">{selectedInvoiceForPayments.consecutivo}</span> | {selectedInvoiceForPayments.conjuntoNombre}
+                </p>
+              </div>
+              <button 
+                onClick={() => setIsPaymentsModalOpen(false)}
+                className="text-slate-400 hover:text-white transition-colors p-1 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 overflow-y-auto flex-1 space-y-6">
+              {/* Resumen Contable */}
+              {(() => {
+                const totalFacturado = selectedInvoiceForPayments.granTotal || 0;
+                const totalRecaudado = selectedInvoiceForPayments.montoPagado || 0;
+                const totalAjustes = selectedInvoiceForPayments.payments
+                  ?.filter((p: any) => p.tipo === 'DESCUENTO' || p.tipo === 'AJUSTE')
+                  .reduce((sum: number, p: any) => sum + p.monto, 0) || 0;
+                const totalCreditos = totalRecaudado + totalAjustes;
+                const balance = totalFacturado - totalCreditos;
+
+                return (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 bg-slate-50 border border-slate-100 rounded-xl">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase">Total Facturado</span>
+                      <span className="text-base font-bold text-slate-800">
+                        {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(totalFacturado)}
+                      </span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase">Total Recaudado</span>
+                      <span className="text-base font-bold text-emerald-700">
+                        {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(totalRecaudado)}
+                      </span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase">Ajustes / Descuentos</span>
+                      <span className="text-base font-bold text-blue-700">
+                        {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(totalAjustes)}
+                      </span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase">
+                        {balance >= -0.5 ? 'Saldo Pendiente' : 'Saldo a Favor'}
+                      </span>
+                      <span className={`text-base font-black ${balance > 0.5 ? 'text-rose-600' : balance < -0.5 ? 'text-emerald-600' : 'text-blue-600'}`}>
+                        {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(Math.abs(balance))}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Tabla de Historial */}
+              <div>
+                <h4 className="font-bold text-sm text-slate-700 mb-3">Movimientos Registrados</h4>
+                {(!selectedInvoiceForPayments.payments || selectedInvoiceForPayments.payments.length === 0) ? (
+                  <p className="text-xs text-slate-500 italic p-4 bg-slate-50 rounded-lg text-center border border-slate-100">
+                    No se han registrado abonos o ajustes para esta cuenta de cobro.
+                  </p>
+                ) : (
+                  <div className="border border-slate-200 rounded-lg overflow-hidden">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-slate-50 text-slate-600 uppercase text-[10px] font-bold border-b border-slate-200">
+                        <tr>
+                          <th className="px-4 py-2">Fecha</th>
+                          <th className="px-4 py-2">Monto</th>
+                          <th className="px-4 py-2">Tipo</th>
+                          <th className="px-4 py-2">Método</th>
+                          <th className="px-4 py-2">Observación</th>
+                          <th className="px-4 py-2 text-right">Acción</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200">
+                        {selectedInvoiceForPayments.payments.map((pay: any) => (
+                          <tr key={pay.id} className="hover:bg-slate-50">
+                            <td className="px-4 py-2.5 font-medium text-slate-600">
+                              {new Date(pay.fecha).toLocaleDateString('es-CO', { timeZone: 'UTC' })}
+                            </td>
+                            <td className="px-4 py-2.5 font-bold text-slate-800">
+                              {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(pay.monto)}
+                            </td>
+                            <td className="px-4 py-2.5">
+                              <span className={`px-2 py-0.5 rounded-full font-bold text-[9px] ${
+                                pay.tipo === 'RECAUDO' ? 'bg-emerald-100 text-emerald-800' :
+                                pay.tipo === 'CRUCE_ANTICIPO' ? 'bg-amber-100 text-amber-800' :
+                                pay.tipo === 'DESCUENTO' ? 'bg-blue-100 text-blue-800' :
+                                'bg-slate-100 text-slate-800'
+                              }`}>
+                                {pay.tipo}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2.5 text-slate-500">{pay.metodo || 'N/A'}</td>
+                            <td className="px-4 py-2.5 text-slate-500 max-w-[150px] truncate" title={pay.observacion}>
+                              {pay.observacion || '-'}
+                            </td>
+                            <td className="px-4 py-2.5 text-right">
+                              <button 
+                                onClick={() => handleDeletePayment(pay.id)}
+                                disabled={isSavingPayment}
+                                className="text-rose-500 hover:text-rose-700 disabled:opacity-30 p-1 hover:bg-rose-50 rounded"
+                                title="Eliminar abono"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Formulario para agregar */}
+              <div className="border-t border-slate-100 pt-6">
+                <h4 className="font-bold text-sm text-slate-700 mb-3">Registrar Nuevo Movimiento</h4>
+                <form onSubmit={handleAddPayment} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Tipo de Movimiento</label>
+                    <select
+                      value={newPaymentTipo}
+                      onChange={(e) => {
+                        setNewPaymentTipo(e.target.value);
+                        if (e.target.value !== 'RECAUDO') {
+                          setNewPaymentMetodo("");
+                        } else {
+                          setNewPaymentMetodo("Transferencia");
+                        }
+                      }}
+                      className="w-full mt-1 border border-slate-300 rounded-lg px-3 py-2 text-xs bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
+                    >
+                      <option value="RECAUDO">PAGO REGULAR (CAJA/BANCO)</option>
+                      <option value="CRUCE_ANTICIPO">CRUCE DE ANTICIPO / SALDO A FAVOR</option>
+                      <option value="DESCUENTO">DESCUENTO (PRONTO PAGO, ETC.)</option>
+                      <option value="AJUSTE">AJUSTE MANUAL (NOTA CRÉDITO/MENOR CUANTÍA)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Fecha de Registro</label>
+                    <input
+                      type="date"
+                      value={newPaymentFecha}
+                      onChange={(e) => setNewPaymentFecha(e.target.value)}
+                      required
+                      className="w-full mt-1 border border-slate-300 rounded-lg px-3 py-2 text-xs bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Monto ($ COP)</label>
+                    <input
+                      type="number"
+                      step="any"
+                      placeholder="Monto (ej: 50000 o -20000)"
+                      value={newPaymentMonto}
+                      onChange={(e) => setNewPaymentMonto(e.target.value)}
+                      required
+                      className="w-full mt-1 border border-slate-300 rounded-lg px-3 py-2 text-xs bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none font-bold"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Método de Pago</label>
+                    <select
+                      value={newPaymentMetodo}
+                      onChange={(e) => setNewPaymentMetodo(e.target.value)}
+                      disabled={newPaymentTipo !== 'RECAUDO'}
+                      className="w-full mt-1 border border-slate-300 rounded-lg px-3 py-2 text-xs bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none disabled:bg-slate-50 disabled:text-slate-400"
+                    >
+                      {newPaymentTipo === 'RECAUDO' ? (
+                        <>
+                          <option value="Transferencia">Transferencia</option>
+                          <option value="Consignación">Consignación</option>
+                          <option value="Efectivo">Efectivo</option>
+                          <option value="Cheque">Cheque</option>
+                          <option value="Otro">Otro</option>
+                        </>
+                      ) : (
+                        <option value="">No aplica</option>
+                      )}
+                    </select>
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Observaciones</label>
+                    <input
+                      type="text"
+                      placeholder="Detalle o justificación del movimiento..."
+                      value={newPaymentObs}
+                      onChange={(e) => setNewPaymentObs(e.target.value)}
+                      className="w-full mt-1 border border-slate-300 rounded-lg px-3 py-2 text-xs bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2 pt-2">
+                    <button
+                      type="submit"
+                      disabled={isSavingPayment}
+                      className="w-full py-2.5 bg-emerald-600 text-white font-bold rounded-lg text-xs hover:bg-emerald-700 transition-all shadow-md shadow-emerald-600/20 disabled:opacity-50 flex items-center justify-center"
+                    >
+                      {isSavingPayment ? (
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      ) : (
+                        "Registrar Movimiento"
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

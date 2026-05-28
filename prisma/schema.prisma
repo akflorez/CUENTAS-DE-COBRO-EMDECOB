@@ -32,6 +32,7 @@ model Invoice {
   montoPagado       Float         @default(0)
   observacion       String?       @default("")
   items             InvoiceItem[]
+  payments          Payment[]
 }
 
 model InvoiceItem {
@@ -47,4 +48,17 @@ model InvoiceItem {
   iva        Float
   total      Float
   invoice    Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+
+model Payment {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  monto       Float
+  tipo        String   // RECAUDO, CRUCE_ANTICIPO, DESCUENTO, AJUSTE
+  fecha       DateTime @default(now())
+  metodo      String?
+  observacion String?  @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 }
