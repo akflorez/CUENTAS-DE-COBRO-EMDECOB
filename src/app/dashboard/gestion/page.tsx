@@ -527,20 +527,20 @@ export default function GestionPage() {
             <table className="w-full text-sm text-left">
                   <thead className="text-xs text-slate-500 uppercase bg-slate-50 sticky top-0 z-10 shadow-sm border-b border-slate-200">
                 <tr>
-                  <th className="px-5 py-4 font-semibold">Conse.</th>
-                  <th className="px-5 py-4 font-semibold">Conjunto</th>
-                  <th className="px-5 py-4 font-semibold text-center">Mes Gestión</th>
-                  <th className="px-5 py-4 font-semibold text-center">Mes Generación</th>
-                  <th className="px-5 py-4 font-semibold text-center">Fecha Emisión</th>
-                  <th className="px-5 py-4 font-semibold text-right">Honorarios</th>
-                  <th className="px-5 py-4 font-semibold text-right">IVA</th>
-                  <th className="px-5 py-4 font-semibold text-right">Total</th>
-                  <th className="px-5 py-4 font-semibold text-center">Estado Pago</th>
-                  <th className="px-5 py-4 font-semibold text-center">Monto Recaudado</th>
-                  <th className="px-5 py-4 font-semibold text-center">Validación</th>
-                  <th className="px-5 py-4 font-semibold text-center">Fecha Pago</th>
-                  <th className="px-5 py-4 font-semibold text-center">Observación</th>
-                  <th className="px-5 py-4 font-semibold text-right sticky right-0 bg-slate-50 shadow-[-10px_0_10px_-10px_rgba(0,0,0,0.1)]">Acciones</th>
+                  <th className="px-5 py-4 font-semibold whitespace-nowrap min-w-[100px]">Conse.</th>
+                  <th className="px-5 py-4 font-semibold min-w-[200px]">Conjunto</th>
+                  <th className="px-5 py-4 font-semibold text-center whitespace-nowrap min-w-[120px]">Mes Gestión</th>
+                  <th className="px-5 py-4 font-semibold text-center whitespace-nowrap min-w-[120px]">Mes Generación</th>
+                  <th className="px-5 py-4 font-semibold text-center whitespace-nowrap min-w-[120px]">Fecha Emisión</th>
+                  <th className="px-5 py-4 font-semibold text-right whitespace-nowrap min-w-[110px]">Honorarios</th>
+                  <th className="px-5 py-4 font-semibold text-right whitespace-nowrap min-w-[100px]">IVA</th>
+                  <th className="px-5 py-4 font-semibold text-right whitespace-nowrap min-w-[110px]">Total</th>
+                  <th className="px-5 py-4 font-semibold text-center whitespace-nowrap min-w-[130px]">Estado Pago</th>
+                  <th className="px-5 py-4 font-semibold text-center whitespace-nowrap min-w-[125px]">Monto Recaudado</th>
+                  <th className="px-5 py-4 font-semibold text-center whitespace-nowrap min-w-[100px]">Validación</th>
+                  <th className="px-5 py-4 font-semibold text-center whitespace-nowrap min-w-[150px]">Fecha Pago</th>
+                  <th className="px-5 py-4 font-semibold text-center whitespace-nowrap min-w-[250px]">Observación</th>
+                  <th className="px-5 py-4 font-semibold text-right sticky right-0 bg-slate-50 shadow-[-10px_0_10px_-10px_rgba(0,0,0,0.1)] whitespace-nowrap min-w-[120px]">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 min-h-[300px]">
@@ -748,7 +748,7 @@ export default function GestionPage() {
                       </td>
 
                     {/* ACCIONES */}
-                     <td className="px-5 py-4 text-right sticky right-0 bg-white group-hover:bg-slate-50 shadow-[-10px_0_10px_-10px_rgba(0,0,0,0.1)] transition-colors">
+                     <td className="px-5 py-4 text-right sticky right-0 bg-white group-hover:bg-slate-50 shadow-[-10px_0_10px_-10px_rgba(0,0,0,0.1)] transition-colors whitespace-nowrap min-w-[120px]">
                        <div className="flex justify-end gap-1">
                          <button 
                            onClick={() => handleDownloadPdf(inv)}

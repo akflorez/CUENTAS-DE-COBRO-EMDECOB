@@ -120,9 +120,24 @@ export async function getInvoices(
 
       if (numericValues.length > 0) {
         where.OR = numericValues.map(val => ([
-          { granTotal: val },
-          { honorariosTotal: val },
-          { montoPagado: val }
+          {
+            granTotal: {
+              gte: val - 0.5,
+              lte: val + 0.5
+            }
+          },
+          {
+            honorariosTotal: {
+              gte: val - 0.5,
+              lte: val + 0.5
+            }
+          },
+          {
+            montoPagado: {
+              gte: val - 0.5,
+              lte: val + 0.5
+            }
+          }
         ])).flat();
       }
     }
