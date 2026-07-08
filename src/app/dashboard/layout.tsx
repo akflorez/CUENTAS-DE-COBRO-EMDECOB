@@ -120,7 +120,14 @@ export default function DashboardLayout({
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-100">
               <div className="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white font-bold text-xs flex items-center justify-center shadow-sm uppercase">
-                {(typeof window !== 'undefined' ? localStorage.getItem('currentUser') || 'PH' : 'PH').substring(0, 2)}
+                {(() => {
+                  const user = (typeof window !== 'undefined' ? localStorage.getItem('currentUser') : null) || 'PH';
+                  const parts = user.trim().split(/\s+/);
+                  if (parts.length >= 2) {
+                    return (parts[0][0] + parts[1][0]).toUpperCase();
+                  }
+                  return user.substring(0, 2).toUpperCase();
+                })()}
               </div>
               <span className="text-xs font-semibold text-emerald-800 hidden sm:block capitalize">
                 {(typeof window !== 'undefined' ? localStorage.getItem('currentUser') || 'Propiedad Horizontal' : 'Propiedad Horizontal').toLowerCase()}

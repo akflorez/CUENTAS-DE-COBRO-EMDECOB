@@ -20,8 +20,9 @@ export default function LoginPage() {
     const isValidProph = user === 'PROPIEDAD HORIZONTAL' && password === '292509';
     const isValidEmdecob = user === 'EMDECOB' && password === '270227';
     const isValidTesoreria = user === 'TESORERIA' && password === '261424';
+    const isValidMixto = (user === 'PORTAFOLIO MIXTO' || user === 'PM') && password === '700826';
 
-    if (isValidProph || isValidEmdecob || isValidTesoreria) {
+    if (isValidProph || isValidEmdecob || isValidTesoreria || isValidMixto) {
       localStorage.setItem('currentUser', user);
       setTimeout(() => {
         router.push('/dashboard/upload');

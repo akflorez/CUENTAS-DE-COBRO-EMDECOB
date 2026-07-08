@@ -12,6 +12,7 @@ model Invoice {
   consecutivo       String        @unique
   conjuntoNombre    String
   asesor            String?
+  portafolio        String        @default("PROPIEDAD HORIZONTAL")
   estadoCobro       String?
   capitalTotal      Float
   interesesTotal    Float

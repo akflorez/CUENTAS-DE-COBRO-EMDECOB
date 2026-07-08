@@ -9,6 +9,7 @@ export async function POST(req: Request) {
     const pdfBlob = formData.get('pdf') as Blob;
     const toEmail = formData.get('email') as string;
     const conjuntoName = formData.get('conjunto') as string;
+    const portafolio = (formData.get('portafolio') as string) || "PROPIEDAD HORIZONTAL";
     
     const smtpUser = formData.get('smtpUser') as string;
     const smtpPass = formData.get('smtpPass') as string;
@@ -16,6 +17,9 @@ export async function POST(req: Request) {
     if (!pdfBlob || !toEmail || !smtpUser || !smtpPass) {
         return NextResponse.json({ success: false, error: "Missing required parameters or credentials." }, { status: 400 });
     }
+
+    const isPropiedadHorizontal = portafolio.trim().toUpperCase() === "PROPIEDAD HORIZONTAL";
+    const officialEmail = isPropiedadHorizontal ? "direccioncarteraphorizontal@emdecob.com" : "serviciosjuridicos2@emdecob.com";
 
     // Convert Blob -> Buffer for native node handler
     const arrayBuffer = await pdfBlob.arrayBuffer();
@@ -33,11 +37,15 @@ export async function POST(req: Request) {
 
     const mailOptions = {
       from: `"EMDECOB S.A.S" <${smtpUser}>`,
-      replyTo: "direccioncarteraphorizontal@emdecob.com",
-      bcc: "direccioncarteraphorizontal@emdecob.com",
+      replyTo: officialEmail,
+      bcc: officialEmail,
       to: toEmail,
-      subject: `Cuenta de Cobro PH: ${conjuntoName} - EMDECOB S.A.S`,
-      text: `Buen día,\n\nAdjunto enviamos la cuenta de cobro correspondiente a la gestión de cobro de cartera de propiedad horizontal para ${conjuntoName}.\n\nPara dudas o confirmaciones de pago, comuníquese a nuestros canales oficiales detallados en el PDF.\n\nCordialmente,\nEMDECOB S.A.S`,
+      subject: isPropiedadHorizontal 
+        ? `Cuenta de Cobro PH: ${conjuntoName} - EMDECOB S.A.S` 
+        : `Cuenta de Cobro: ${conjuntoName} - EMDECOB S.A.S`,
+      text: isPropiedadHorizontal
+        ? `Buen día,\n\nAdjunto enviamos la cuenta de cobro correspondiente a la gestión de cobro de cartera de propiedad horizontal para ${conjuntoName}.\n\nPara dudas o confirmaciones de pago, comuníquese a nuestros canales oficiales detallados en el PDF.\n\nCordialmente,\nEMDECOB S.A.S`
+        : `Buen día,\n\nAdjunto enviamos la cuenta de cobro correspondiente a la gestión de cobro de cartera para ${conjuntoName}.\n\nPara dudas o confirmaciones de pago, comuníquese a nuestros canales oficiales detallados en el PDF.\n\nCordialmente,\nEMDECOB S.A.S`,
       attachments: [
         {
           filename: `Cuenta_Cobro_${conjuntoName}.pdf`,

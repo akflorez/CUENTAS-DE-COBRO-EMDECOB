@@ -16,6 +16,7 @@ export default function GestionPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [dbConjunto, setDbConjunto] = useState("Todos");
+  const [dbPortafolio, setDbPortafolio] = useState("Todos");
   const [conjuntos, setConjuntos] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
@@ -68,8 +69,8 @@ export default function GestionPage() {
     setError(null);
     try {
       const [invRes, conjRes] = await Promise.all([
-        getInvoices(page, 20, dbConjunto, filterGenMes, filterGenAnio, debouncedSearch, debouncedValor),
-        getConjuntos()
+        getInvoices(page, 20, dbConjunto, filterGenMes, filterGenAnio, debouncedSearch, debouncedValor, dbPortafolio),
+        getConjuntos(dbPortafolio)
       ]);
       
       if (invRes.success) {
@@ -88,13 +89,13 @@ export default function GestionPage() {
       console.error(err);
     }
     setLoading(false);
-  }, [page, dbConjunto, filterGenMes, filterGenAnio, debouncedSearch, debouncedValor]);
+  }, [page, dbConjunto, filterGenMes, filterGenAnio, debouncedSearch, debouncedValor, dbPortafolio]);
 
   useEffect(() => {
     loadData();
     if (typeof window !== 'undefined') {
       const user = localStorage.getItem('currentUser');
-      setIsAdmin(user === 'EMDECOB' || user === 'PROPIEDAD HORIZONTAL');
+      setIsAdmin(user === 'EMDECOB' || user === 'PROPIEDAD HORIZONTAL' || user === 'PORTAFOLIO MIXTO' || user === 'PM');
     }
   }, [loadData]);
 
@@ -506,12 +507,22 @@ export default function GestionPage() {
                </select>
             </div>
  
-            <SearchableSelect 
-              label="Filtrar por Conjunto"
-              options={conjuntos}
-              value={dbConjunto}
-              onChange={(val) => { setDbConjunto(val); setPage(1); }}
-            />
+             <select 
+               value={dbPortafolio}
+               onChange={(e) => { setDbPortafolio(e.target.value); setDbConjunto("Todos"); setPage(1); }}
+               className="text-sm border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+             >
+               <option value="Todos">Portafolio: Todos</option>
+               <option value="PROPIEDAD HORIZONTAL">Propiedad Horizontal</option>
+               <option value="MIXTO">Mixto</option>
+             </select>
+
+             <SearchableSelect 
+               label="Filtrar por Conjunto"
+               options={conjuntos}
+               value={dbConjunto}
+               onChange={(val) => { setDbConjunto(val); setPage(1); }}
+             />
             
             <div className="flex gap-2">
                <div className="flex flex-col">
@@ -526,9 +537,9 @@ export default function GestionPage() {
                </div>
 
                <div className="flex items-end gap-2">
-                 {(dbConjunto !== "Todos" || filterGenMes !== 0 || filterGenAnio !== 0 || overrideFechaPdf !== "" || searchTerm !== "" || searchValor !== "") && (
+                 {(dbConjunto !== "Todos" || dbPortafolio !== "Todos" || filterGenMes !== 0 || filterGenAnio !== 0 || overrideFechaPdf !== "" || searchTerm !== "" || searchValor !== "") && (
                    <button 
-                     onClick={() => { setDbConjunto("Todos"); setFilterGenMes(0); setFilterGenAnio(0); setOverrideFechaPdf(""); setSearchTerm(""); setSearchValor(""); setPage(1); }}
+                     onClick={() => { setDbConjunto("Todos"); setDbPortafolio("Todos"); setFilterGenMes(0); setFilterGenAnio(0); setOverrideFechaPdf(""); setSearchTerm(""); setSearchValor(""); setPage(1); }}
                      className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors h-[38px]"
                      title="Limpiar Filtros"
                    >

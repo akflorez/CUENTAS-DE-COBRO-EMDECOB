@@ -32,6 +32,7 @@ export async function saveInvoiceRecord(data: MappedRecord) {
         consecutivo: data.consecutivo,
         conjuntoNombre: data.conjuntoNombre,
         asesor: data.asesor,
+        portafolio: data.portafolio || "PROPIEDAD HORIZONTAL",
         estadoCobro: data.estadoCobro,
         capitalTotal: data.capitalTotal,
         interesesTotal: data.interesesTotal,
@@ -80,13 +81,17 @@ export async function getInvoices(
   genMes?: number, 
   genAnio?: number,
   search?: string,
-  valor?: string
+  valor?: string,
+  portafolio?: string
 ) {
   try {
     const prisma = getPrisma();
     const where: any = {};
     if (conjunto && conjunto !== "Todos") {
       where.conjuntoNombre = conjunto;
+    }
+    if (portafolio && portafolio !== "Todos") {
+      where.portafolio = portafolio;
     }
     if (genMes && genMes !== 0) {
       where.generacionMes = genMes;
@@ -166,13 +171,18 @@ export async function getInvoices(
   }
 }
 
-export async function getConjuntos() {
+export async function getConjuntos(portafolio?: string) {
   try {
     const prisma = getPrisma();
-    const conjuntos = await prisma.invoice.groupBy({
+    const where: any = {};
+    if (portafolio && portafolio !== "Todos") {
+      where.portafolio = portafolio;
+    }
+    const conjuntos = await (prisma.invoice as any).groupBy({
       by: ['conjuntoNombre'],
+      where
     });
-    return JSON.parse(JSON.stringify({ success: true, conjuntos: conjuntos.map(c => c.conjuntoNombre) }));
+    return JSON.parse(JSON.stringify({ success: true, conjuntos: conjuntos.map((c: any) => c.conjuntoNombre) }));
   } catch (error: any) {
     console.error('Error fetching conjuntos:', error);
     return JSON.parse(JSON.stringify({ success: false, error: error.message }));
@@ -276,7 +286,7 @@ export async function updateInvoiceMetadata(
   }
 }
 
-export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | null, conjunto?: string) {
+export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | null, conjunto?: string, portafolio?: string) {
   // Forzar datos frescos (no usar caché de Next.js)
   const { unstable_noStore } = await import('next/cache');
   unstable_noStore();
@@ -302,6 +312,9 @@ export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | 
     }
     if (conjunto && conjunto !== "Todos") {
       where.conjuntoNombre = conjunto;
+    }
+    if (portafolio && portafolio !== "Todos") {
+      where.portafolio = portafolio;
     }
 
     const timeoutPromise = new Promise((_, reject) => 

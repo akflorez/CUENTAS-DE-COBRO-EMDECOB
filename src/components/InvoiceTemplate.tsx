@@ -15,6 +15,8 @@ interface Props {
  * - El contenedor raíz NO tiene fondo gris ni padding externo para que html2pdf no mida mal el contenido.
  */
 export const InvoiceTemplate = React.forwardRef<HTMLDivElement, Props>(({ data }, ref) => {
+  const isPropiedadHorizontal = !data.portafolio || data.portafolio.trim().toUpperCase() === "PROPIEDAD HORIZONTAL";
+
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('es-CO', {
       style: 'currency',
@@ -108,7 +110,7 @@ export const InvoiceTemplate = React.forwardRef<HTMLDivElement, Props>(({ data }
 
       {/* ===== TEXTO CONCEPTO ===== */}
       <p style={{ margin: '0 0 12px', fontSize: '12px', color: '#475569', textAlign: 'justify', lineHeight: 1.6 }}>
-        Por concepto de gastos de cobranza y compromisos de pago correspondientes a la gestión realizada para la cartera del conjunto residencial mencionado, se detalla a continuación el estado de cuenta y relación de pagos.
+        Por concepto de gastos de cobranza y compromisos de pago correspondientes a la gestión realizada para la cartera {isPropiedadHorizontal ? "del conjunto residencial mencionado" : "de la entidad mencionada"}, se detalla a continuación el estado de cuenta y relación de pagos.
       </p>
 
       {/* ===== TABLA DE ITEMS — flujo natural ===== */}
@@ -196,7 +198,7 @@ export const InvoiceTemplate = React.forwardRef<HTMLDivElement, Props>(({ data }
             a nombre de Servicio Integral de Cobranza y Asesoría Jurídica.
             <br /><br />
             Una vez se realice, por favor enviar copia del soporte al correo:{' '}
-            <strong style={{ color: '#15803d' }}>direccioncarteraphorizontal@emdecob.com</strong>{' '}
+            <strong style={{ color: '#15803d' }}>{isPropiedadHorizontal ? "direccioncarteraphorizontal@emdecob.com" : "serviciosjuridicos2@emdecob.com"}</strong>{' '}
             o al WhatsApp <strong style={{ color: '#15803d' }}>3218520603</strong>.
           </p>
         </div>
@@ -204,7 +206,7 @@ export const InvoiceTemplate = React.forwardRef<HTMLDivElement, Props>(({ data }
         {/* Firma */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: '4px', paddingBottom: '8px' }}>
           <img
-            src="/assets/firma.png"
+            src={isPropiedadHorizontal ? "/assets/firma.png" : "/assets/firma-mixto.png"}
             alt="Firma"
             style={{ height: '72px', objectFit: 'cover', objectPosition: 'center top', clipPath: 'inset(0px 0px 3px 0px)' }}
             onError={(e) => {
@@ -212,8 +214,8 @@ export const InvoiceTemplate = React.forwardRef<HTMLDivElement, Props>(({ data }
               e.currentTarget.parentElement?.insertAdjacentHTML('afterbegin', '<div style="height:48px;width:160px;border-bottom:1px solid #94a3b8;margin-bottom:6px"></div>');
             }}
           />
-          <p style={{ margin: '2px 0 0', fontWeight: 700, fontSize: '12px', color: '#1e293b' }}>Julián David Cuartas Reyes</p>
-          <p style={{ margin: '1px 0 0', fontSize: '10px', color: '#64748b', fontWeight: 500 }}>Director de Cartera - Propiedad Horizontal</p>
+          <p style={{ margin: '2px 0 0', fontWeight: 700, fontSize: '12px', color: '#1e293b' }}>{isPropiedadHorizontal ? "Julián David Cuartas Reyes" : "Juan José Escobar"}</p>
+          <p style={{ margin: '1px 0 0', fontSize: '10px', color: '#64748b', fontWeight: 500 }}>{isPropiedadHorizontal ? "Director de Cartera - Propiedad Horizontal" : "Gerente General"}</p>
         </div>
       </div>
     </div>

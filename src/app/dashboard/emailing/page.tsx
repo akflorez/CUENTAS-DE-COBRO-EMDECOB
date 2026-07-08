@@ -170,6 +170,7 @@ export default function EmailingPage() {
             formData.append('pdf', blob, `Cuenta_Cobro_${match.invoice.mapped.conjuntoNombre}.pdf`); 
             formData.append('email', match.associatedEmail!);
             formData.append('conjunto', match.invoice.mapped.conjuntoNombre || 'Conjunto');
+            formData.append('portafolio', match.invoice.mapped.portafolio || 'PROPIEDAD HORIZONTAL');
             formData.append('smtpUser', smtpUser);
             formData.append('smtpPass', smtpPass);
 

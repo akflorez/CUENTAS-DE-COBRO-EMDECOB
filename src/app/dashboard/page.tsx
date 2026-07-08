@@ -47,6 +47,7 @@ export default function DashboardIndex() {
   const [dbMonth, setDbMonth] = React.useState<string>("");
   const [dbYear, setDbYear] = React.useState<string>(new Date().getFullYear().toString());
   const [dbConjunto, setDbConjunto] = React.useState<string>("Todos");
+  const [dbPortafolio, setDbPortafolio] = React.useState<string>("Todos");
   const [conjuntos, setConjuntos] = React.useState<string[]>([]);
   const [refreshKey, setRefreshKey] = React.useState(0);
 
@@ -76,7 +77,7 @@ export default function DashboardIndex() {
     try {
       const start = dbStartDate ? new Date(dbStartDate) : null;
       const end = dbEndDate ? new Date(dbEndDate) : null;
-      const res = await getInvoiceStats(start, end, dbConjunto);
+      const res = await getInvoiceStats(start, end, dbConjunto, dbPortafolio);
       if (res.success) {
         setDbStats(res.stats);
       }
@@ -85,14 +86,14 @@ export default function DashboardIndex() {
     } finally {
       setLoadingStats(false);
     }
-  }, [dbStartDate, dbEndDate, dbConjunto, refreshKey]);
+  }, [dbStartDate, dbEndDate, dbConjunto, dbPortafolio, refreshKey]);
 
   const loadInitialData = React.useCallback(async () => {
-    const res = await getConjuntos();
+    const res = await getConjuntos(dbPortafolio);
     if (res.success) {
       setConjuntos(res.conjuntos || []);
     }
-  }, []);
+  }, [dbPortafolio]);
 
   React.useEffect(() => {
     fetchDbStats();
@@ -174,6 +175,19 @@ export default function DashboardIndex() {
               onChange={(e) => { setDbEndDate(e.target.value); setDbMonth(""); }}
             />
             <div className="flex items-center gap-2 px-3 border-l border-slate-100 ml-2">
+              <span className="text-[10px] font-bold text-slate-400 uppercase">Portafolio</span>
+            </div>
+            <select 
+              className="text-xs font-bold bg-slate-50 border-none rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all cursor-pointer text-slate-600"
+              value={dbPortafolio}
+              onChange={(e) => { setDbPortafolio(e.target.value); setDbConjunto("Todos"); }}
+            >
+              <option value="Todos">Todos</option>
+              <option value="PROPIEDAD HORIZONTAL">P. Horizontal</option>
+              <option value="MIXTO">Mixto</option>
+            </select>
+
+            <div className="flex items-center gap-2 px-3 border-l border-slate-100 ml-2">
               <Building2 className="w-4 h-4 text-slate-400" />
             </div>
             <SearchableSelect 
@@ -183,9 +197,9 @@ export default function DashboardIndex() {
               onChange={(val) => setDbConjunto(val)}
             />
 
-            {(dbStartDate || dbEndDate || dbConjunto !== "Todos" || dbMonth) && (
+            {(dbStartDate || dbEndDate || dbConjunto !== "Todos" || dbPortafolio !== "Todos" || dbMonth) && (
               <button 
-                onClick={() => { setDbStartDate(""); setDbEndDate(""); setDbConjunto("Todos"); setDbMonth(""); }}
+                onClick={() => { setDbStartDate(""); setDbEndDate(""); setDbConjunto("Todos"); setDbPortafolio("Todos"); setDbMonth(""); }}
                 className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
                 title="Limpiar filtros"
               >
