@@ -199,7 +199,7 @@ export const InvoiceTemplate = React.forwardRef<HTMLDivElement, Props>(({ data }
             <br /><br />
             Una vez se realice, por favor enviar copia del soporte al correo:{' '}
             <strong style={{ color: '#15803d' }}>{isPropiedadHorizontal ? "direccioncarteraphorizontal@emdecob.com" : "serviciosjuridicos2@emdecob.com"}</strong>{' '}
-            o al WhatsApp <strong style={{ color: '#15803d' }}>3218520603</strong>.
+            o al WhatsApp <strong style={{ color: '#15803d' }}>{isPropiedadHorizontal ? '3218520603' : '3042510294'}</strong>.
           </p>
         </div>
 
