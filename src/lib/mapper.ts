@@ -67,29 +67,32 @@ export function mapRawRecord(row: any) {
   const fileRefMonth = row._fileGestionMonth;
   const fileRefYear = row._fileGestionYear;
 
+  const rawPortafolio = String(findCol(row, "PORTAFOLIO", "PORTAFOLIO ") || "PROPIEDAD HORIZONTAL").trim().toUpperCase();
+  const isMixto = rawPortafolio.includes("MIXTO");
+  const portafolio = isMixto ? "MIXTO" : "PROPIEDAD HORIZONTAL";
+
+  const valorAdministracion = parseNumber(findCol(row, "Valor Administracion", "VALOR ADMINISTRACION", "VALOR ADMINISTRACIÓN", "Valor Administración", "ADMINISTRACION", "VALOR ADMIN"));
+  const rawCapital = parseNumber(findCol(row, "VALOR CAPITAL", "CAPITAL"));
+  const capital = isMixto ? rawCapital : (rawCapital + valorAdministracion);
+
   return {
     nombre: findCol(row, "NOMBRE", "NOMBRE ", "DEUDOR"),
     cedula: findCol(row, "CEDULA", "CEDULA ", "NIT", "IDENTIFICACION"),
     direccion: findCol(row, "Dirección", "Direccion", "PREDIO", "  Dirección"),
     matricula: findCol(row, "MATRICULA", "MATRICULA INMOBILIARIA"),
     conjuntoNombre: findCol(row, "CARTERA", "PORTAFOLIO", "CONJUNTO"),
-    capital: parseNumber(findCol(row, "VALOR CAPITAL", "CAPITAL")),
+    capital,
     intereses: parseNumber(findCol(row, "Abono Intereses", "INTERESES", "Abono Interes")),
     honorarios: parseNumber(findCol(row, "HONORARIOS", "HONORARIOS ", "GASTOS COBRANZAS")),
     iva: parseNumber(findCol(row, "IVA", "IVA ")),
     total: parseNumber(findCol(row, "TOTAL", "TOTAL ", "VALOR TOTAL", "TOTAL A PAGAR")),
-    valorAdministracion: parseNumber(findCol(row, "Valor Administracion", "VALOR ADMINISTRACION", "VALOR ADMINISTRACIÓN", "Valor Administración", "ADMINISTRACION", "VALOR ADMIN")),
+    valorAdministracion,
     fechaPago: findCol(row, "Fecha ingreso dinero", "FECHA INGRESO DINERO", "FECHA INGRESO DEL DINERO", "FECHA INGRESO", "FECHA DE PAGO", "FECHA PAGO", "FECHA"),
     fechaIngreso: findCol(row, "Fecha ingreso dinero", "FECHA INGRESO DINERO", "FECHA INGRESO DEL DINERO", "FECHA INGRESO"),
     fechaElaboracion: findCol(row, "FECHA ELABORACION", "FECHA CREACION", "FECHA CUENTA DE COBRO", "FECHA DE CREACION", "FECHA DE ENVIO", "FECHA ENVIO") || fileRefDate,
     estadoCobro: findCol(row, "CUENTA DE COBRO", "CUENTA DE COBRO "),
     asesor: findCol(row, "ASESOR", "ASESOR ", "ASESORA"),
-    portafolio: (() => {
-      const rawPortafolio = String(findCol(row, "PORTAFOLIO", "PORTAFOLIO ") || "PROPIEDAD HORIZONTAL").trim().toUpperCase();
-      if (rawPortafolio.includes("MIXTO")) return "MIXTO";
-      if (rawPortafolio.includes("PROPIEDAD HORIZONTAL")) return "PROPIEDAD HORIZONTAL";
-      return rawPortafolio || "PROPIEDAD HORIZONTAL";
-    })(),
+    portafolio,
     
     // Extracción de Gestión (Directo del archivo)
     archivoGestionMes: findCol(row, "GESTION", "MES GESTION", "CICLO", "MES GESTIÓN"),
@@ -131,7 +134,7 @@ export function groupRecords(rawRows: any[], startingConsecutive: number = 1): M
     if (grouped.has(conjunto)) {
       const existing = grouped.get(conjunto)!;
       existing.items.push(item);
-      existing.capitalTotal += item.capital + item.valorAdministracion;
+      existing.capitalTotal += item.capital;
       existing.interesesTotal += item.intereses;
       existing.honorariosTotal += item.honorarios;
       existing.ivaTotal += item.iva;
@@ -162,7 +165,7 @@ export function groupRecords(rawRows: any[], startingConsecutive: number = 1): M
         gestionAnio: gAnio,
         consecutivo: String(new Date().getFullYear()) + "-" + String(consecutivoCounter).padStart(4, '0'),
         items: [item],
-        capitalTotal: item.capital + item.valorAdministracion,
+        capitalTotal: item.capital,
         interesesTotal: item.intereses,
         honorariosTotal: item.honorarios,
         ivaTotal: item.iva,
