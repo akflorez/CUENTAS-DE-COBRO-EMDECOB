@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
-import { getInvoices, updateInvoiceStatus, getConjuntos, updateInvoiceMetadata, addPayment, deletePayment, deleteInvoice } from "@/app/actions/invoice";
+import { getInvoices, updateInvoiceStatus, getConjuntos, updateInvoiceMetadata, addPayment, deletePayment, deleteInvoice, deleteInvoicesByFilter } from "@/app/actions/invoice";
 import { ListChecks, Clock, CheckCircle2, AlertCircle, Building2, ChevronLeft, ChevronRight, Search, X, Download, FileText, FileArchive, FileSpreadsheet, Trash2 } from "lucide-react";
 import SearchableSelect from "@/components/SearchableSelect";
 import { downloadPdf, downloadPdfsAsZip } from "@/lib/pdfGenerator";
@@ -371,6 +371,55 @@ export default function GestionPage() {
     setSavingId(null);
   };
 
+  const handleDeleteBatchFiltered = async () => {
+    const filterDesc = [];
+    if (dbPortafolio !== "Todos") filterDesc.push(`Portafolio: ${dbPortafolio}`);
+    if (dbConjunto !== "Todos") filterDesc.push(`Conjunto/Cartera: ${dbConjunto}`);
+    if (filterGenMes !== 0) {
+      const monthsMap = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+      filterDesc.push(`Mes Generación: ${monthsMap[filterGenMes - 1]}`);
+    }
+    if (filterGenAnio !== 0) filterDesc.push(`Año Generación: ${filterGenAnio}`);
+    if (searchTerm) filterDesc.push(`Búsqueda: "${searchTerm}"`);
+    if (searchValor) filterDesc.push(`Valor: "${searchValor}"`);
+
+    const filtersActive = filterDesc.length > 0;
+    const confirmMessage = filtersActive
+      ? `¿Estás seguro de que deseas eliminar permanentemente TODAS las cuentas de cobro que coinciden con los filtros actuales?\n\nFiltros activos:\n${filterDesc.map(f => `- ${f}`).join("\n")}\n\nEsta acción NO se puede deshacer.`
+      : `ATENCIÓN: No tienes ningún filtro seleccionado. Esto eliminará TODAS las cuentas de cobro de la base de datos de todos los meses y portafolios.\n\n¿Estás seguro de que deseas vaciar la base de datos completa?`;
+
+    if (!confirm(confirmMessage)) return;
+
+    if (!filtersActive) {
+      const secondConfirm = confirm("ADVERTENCIA FINAL: Estás a punto de borrar la base de datos completa de EMDECOB. ¿Deseas continuar?");
+      if (!secondConfirm) return;
+    }
+
+    setSavingId("BATCH_DELETE");
+    try {
+      const res = await deleteInvoicesByFilter(
+        dbConjunto,
+        filterGenMes,
+        filterGenAnio,
+        searchTerm,
+        searchValor,
+        dbPortafolio
+      );
+
+      if (res && res.success) {
+        alert(`Se han eliminado ${res.count} cuentas de cobro exitosamente.`);
+        setPage(1);
+        loadData();
+      } else {
+        alert(res?.error || "Error al realizar la eliminación masiva.");
+      }
+    } catch (e: any) {
+      alert("Error técnico: " + (e.message || "Fallo inesperado"));
+    } finally {
+      setSavingId(null);
+    }
+  };
+
   const handleAnular = async (id: string) => {
     if (!confirm('¿Estás seguro de que deseas anular esta cuenta de cobro?')) return;
     
@@ -593,6 +642,22 @@ export default function GestionPage() {
                     )}
                     Descargar Lote (ZIP)
                   </button>
+
+                  {isAdmin && (
+                    <button 
+                      onClick={handleDeleteBatchFiltered}
+                      disabled={savingId === "BATCH_DELETE" || invoices.length === 0}
+                      className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold flex items-center hover:bg-red-750 transition-all shadow-md shadow-red-600/20 disabled:opacity-50 h-[38px]"
+                      title="Eliminar permanentemente todas las cuentas que coincidan con los filtros seleccionados"
+                    >
+                      {savingId === "BATCH_DELETE" ? (
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                      ) : (
+                        <Trash2 className="w-4 h-4 mr-2" />
+                      )}
+                      Eliminación Masiva
+                    </button>
+                  )}
                </div>
             </div>
           </div>

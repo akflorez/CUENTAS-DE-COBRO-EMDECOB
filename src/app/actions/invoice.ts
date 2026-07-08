@@ -27,6 +27,10 @@ export async function saveInvoiceRecord(data: MappedRecord) {
       return JSON.parse(JSON.stringify({ success: false, error: 'Invoice already exists' }));
     }
 
+    const fElab = parseExcelDate(data.items[0]?.fechaElaboracion) || new Date();
+    const genMes = fElab.getMonth() + 1;
+    const genAnio = fElab.getFullYear();
+
     const invoice = await prisma.invoice.create({
       data: {
         consecutivo: data.consecutivo,
@@ -41,6 +45,8 @@ export async function saveInvoiceRecord(data: MappedRecord) {
         granTotal: data.granTotal,
         gestionMes: data.gestionMes,
         gestionAnio: data.gestionAnio,
+        generacionMes: genMes,
+        generacionAnio: genAnio,
         fechaElaboracion: parseExcelDate(data.items[0]?.fechaElaboracion),
         fechaIngresoPorte: parseExcelDate(data.items[0]?.fechaIngresoPorte),
         fechaPago: parseExcelDate(data.items[0]?.fechaPago),
@@ -86,6 +92,31 @@ export async function getInvoices(
 ) {
   try {
     const prisma = getPrisma();
+
+    // Autocorrección: Asignar generacionMes/Anio si están en null para registros existentes
+    const nullInvoices = await prisma.invoice.findMany({
+      where: {
+        OR: [
+          { generacionMes: null },
+          { generacionAnio: null }
+        ]
+      },
+      select: { id: true, fechaElaboracion: true, createdAt: true }
+    });
+    if (nullInvoices.length > 0) {
+      console.log(`[Self-healing] Actualizando ${nullInvoices.length} facturas con generacionMes/Anio en null`);
+      for (const inv of nullInvoices) {
+        const d = inv.fechaElaboracion || inv.createdAt;
+        await prisma.invoice.update({
+          where: { id: inv.id },
+          data: {
+            generacionMes: d.getMonth() + 1,
+            generacionAnio: d.getFullYear()
+          }
+        });
+      }
+    }
+
     const where: any = {};
     if (conjunto && conjunto !== "Todos") {
       where.conjuntoNombre = conjunto;
@@ -633,5 +664,79 @@ async function recalculateInvoiceState(invoiceId: string, prisma: any) {
       fechaPago: isPaid ? (latestPaymentDate || new Date()) : null
     }
   });
+}
+
+export async function deleteInvoicesByFilter(
+  conjunto?: string,
+  genMes?: number,
+  genAnio?: number,
+  search?: string,
+  valor?: string,
+  portafolio?: string
+) {
+  try {
+    const prisma = getPrisma();
+    const where: any = {};
+    if (conjunto && conjunto !== "Todos") {
+      where.conjuntoNombre = conjunto;
+    }
+    if (portafolio && portafolio !== "Todos") {
+      where.portafolio = portafolio;
+    }
+    if (genMes && genMes !== 0) {
+      where.generacionMes = genMes;
+    }
+    if (genAnio && genAnio !== 0) {
+      where.generacionAnio = genAnio;
+    }
+    if (search && search.trim() !== "") {
+      where.consecutivo = {
+        contains: search.trim(),
+        mode: 'insensitive'
+      };
+    }
+    if (valor && valor.trim() !== "") {
+      const searchTrimmed = valor.trim();
+      const cleanSearch = searchTrimmed.replace(/[\$\s]/g, '').replace(/\./g, '').replace(/,/g, '');
+      const N = parseInt(cleanSearch);
+
+      if (!isNaN(N)) {
+        const queryStr = cleanSearch;
+        const L = queryStr.length;
+        const conditions: any[] = [];
+
+        for (let D = L; D <= 10; D++) {
+          const multiplier = Math.pow(10, D - L);
+          const lowerBound = N * multiplier;
+          const upperBound = (N + 1) * multiplier;
+          
+          conditions.push({
+            gte: lowerBound - 0.5,
+            lt: upperBound - 0.5
+          });
+        }
+
+        where.OR = conditions.map(cond => ([
+          { granTotal: cond },
+          { honorariosTotal: cond },
+          { montoPagado: cond }
+        ])).flat();
+      }
+    }
+
+    const { count } = await prisma.invoice.deleteMany({
+      where
+    });
+
+    try {
+      revalidatePath('/dashboard/gestion');
+      revalidatePath('/dashboard');
+    } catch (e) { console.warn('revalidatePath error:', e); }
+
+    return JSON.parse(JSON.stringify({ success: true, count }));
+  } catch (error: any) {
+    console.error('Error deleting batch by filter:', error);
+    return JSON.parse(JSON.stringify({ success: false, error: error.message }));
+  }
 }
 
