@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
-import { getInvoices, updateInvoiceStatus, getConjuntos, updateInvoiceMetadata, addPayment, deletePayment } from "@/app/actions/invoice";
-import { ListChecks, Clock, CheckCircle2, AlertCircle, Building2, ChevronLeft, ChevronRight, Search, X, Download, FileText, FileArchive, FileSpreadsheet } from "lucide-react";
+import { getInvoices, updateInvoiceStatus, getConjuntos, updateInvoiceMetadata, addPayment, deletePayment, deleteInvoice } from "@/app/actions/invoice";
+import { ListChecks, Clock, CheckCircle2, AlertCircle, Building2, ChevronLeft, ChevronRight, Search, X, Download, FileText, FileArchive, FileSpreadsheet, Trash2 } from "lucide-react";
 import SearchableSelect from "@/components/SearchableSelect";
 import { downloadPdf, downloadPdfsAsZip } from "@/lib/pdfGenerator";
 import { InvoiceTemplate } from "@/components/InvoiceTemplate";
@@ -356,6 +356,19 @@ export default function GestionPage() {
       alert(res.error || "Error al eliminar abono");
     }
     setIsSavingPayment(false);
+  };
+
+  const handleDeleteInvoice = async (id: string) => {
+    if (!confirm('¿Estás seguro de que deseas eliminar permanentemente esta cuenta de cobro de la base de datos?\nEsta acción no se puede deshacer.')) return;
+    setSavingId(id);
+    const res = await deleteInvoice(id);
+    if (res.success) {
+      setInvoices(prev => prev.filter(i => i.id !== id));
+      setTotalCount(prev => prev - 1);
+    } else {
+      alert(res.error || "Error al eliminar la cuenta de cobro");
+    }
+    setSavingId(null);
   };
 
   const handleAnular = async (id: string) => {
@@ -878,6 +891,16 @@ export default function GestionPage() {
                              title="Anular Cuenta"
                            >
                              <AlertCircle className="w-4 h-4" />
+                           </button>
+                         )}
+                         {isAdmin && (
+                           <button 
+                             onClick={() => handleDeleteInvoice(inv.id)}
+                             disabled={savingId === inv.id}
+                             className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                             title="Eliminar permanentemente de la Base de Datos"
+                           >
+                             <Trash2 className="w-4 h-4" />
                            </button>
                          )}
                        </div>
