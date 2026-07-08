@@ -15,6 +15,7 @@ export type RecordItem = {
   honorarios: number;
   iva: number;
   total: number;
+  valorAdministracion: number;
 };
 
 export type MappedRecord = {
@@ -77,6 +78,7 @@ export function mapRawRecord(row: any) {
     honorarios: parseNumber(findCol(row, "HONORARIOS", "HONORARIOS ", "GASTOS COBRANZAS")),
     iva: parseNumber(findCol(row, "IVA", "IVA ")),
     total: parseNumber(findCol(row, "TOTAL", "TOTAL ", "VALOR TOTAL", "TOTAL A PAGAR")),
+    valorAdministracion: parseNumber(findCol(row, "Valor Administracion", "VALOR ADMINISTRACION", "VALOR ADMINISTRACIÓN", "Valor Administración", "ADMINISTRACION", "VALOR ADMIN")),
     fechaPago: findCol(row, "Fecha ingreso dinero", "FECHA INGRESO DINERO", "FECHA INGRESO DEL DINERO", "FECHA INGRESO", "FECHA DE PAGO", "FECHA PAGO", "FECHA"),
     fechaIngreso: findCol(row, "Fecha ingreso dinero", "FECHA INGRESO DINERO", "FECHA INGRESO DEL DINERO", "FECHA INGRESO"),
     fechaElaboracion: findCol(row, "FECHA ELABORACION", "FECHA CREACION", "FECHA CUENTA DE COBRO", "FECHA DE CREACION", "FECHA DE ENVIO", "FECHA ENVIO") || fileRefDate,
@@ -122,7 +124,8 @@ export function groupRecords(rawRows: any[], startingConsecutive: number = 1): M
       intereses: mapped.intereses,
       honorarios: mapped.honorarios,
       iva: mapped.iva,
-      total: mapped.total
+      total: mapped.total,
+      valorAdministracion: mapped.valorAdministracion
     };
 
     if (grouped.has(conjunto)) {
@@ -132,8 +135,8 @@ export function groupRecords(rawRows: any[], startingConsecutive: number = 1): M
       existing.interesesTotal += item.intereses;
       existing.honorariosTotal += item.honorarios;
       existing.ivaTotal += item.iva;
-      // granTotal = solo lo que se cobra: Honorarios + IVA
-      existing.granTotal += item.honorarios + item.iva;
+      // granTotal = Honorarios + IVA + Valor Administracion (solo PH)
+      existing.granTotal += item.honorarios + item.iva + (existing.portafolio !== 'MIXTO' ? item.valorAdministracion : 0);
     } else {
       // Determinamos el mes de gestión: PRIORIDAD ABSOLUTA a la selección manual del usuario al subir el archivo
       // para cumplir con la petición de "seleccione marzo debe aparecer en la etiqueta".
@@ -163,8 +166,8 @@ export function groupRecords(rawRows: any[], startingConsecutive: number = 1): M
         interesesTotal: item.intereses,
         honorariosTotal: item.honorarios,
         ivaTotal: item.iva,
-        // granTotal = solo lo que se cobra: Honorarios + IVA
-        granTotal: item.honorarios + item.iva
+        // granTotal = Honorarios + IVA + Valor Administracion (solo PH)
+        granTotal: item.honorarios + item.iva + (mapped.portafolio !== 'MIXTO' ? mapped.valorAdministracion : 0)
       });
       consecutivoCounter++;
     }
