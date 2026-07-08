@@ -131,12 +131,12 @@ export function groupRecords(rawRows: any[], startingConsecutive: number = 1): M
     if (grouped.has(conjunto)) {
       const existing = grouped.get(conjunto)!;
       existing.items.push(item);
-      existing.capitalTotal += item.capital;
+      existing.capitalTotal += item.capital + item.valorAdministracion;
       existing.interesesTotal += item.intereses;
       existing.honorariosTotal += item.honorarios;
       existing.ivaTotal += item.iva;
-      // granTotal = Honorarios + IVA + Valor Administracion (solo PH)
-      existing.granTotal += item.honorarios + item.iva + (existing.portafolio !== 'MIXTO' ? item.valorAdministracion : 0);
+      // granTotal = solo lo que se cobra: Honorarios + IVA
+      existing.granTotal += item.honorarios + item.iva;
     } else {
       // Determinamos el mes de gestión: PRIORIDAD ABSOLUTA a la selección manual del usuario al subir el archivo
       // para cumplir con la petición de "seleccione marzo debe aparecer en la etiqueta".
@@ -162,12 +162,12 @@ export function groupRecords(rawRows: any[], startingConsecutive: number = 1): M
         gestionAnio: gAnio,
         consecutivo: String(new Date().getFullYear()) + "-" + String(consecutivoCounter).padStart(4, '0'),
         items: [item],
-        capitalTotal: item.capital,
+        capitalTotal: item.capital + item.valorAdministracion,
         interesesTotal: item.intereses,
         honorariosTotal: item.honorarios,
         ivaTotal: item.iva,
-        // granTotal = Honorarios + IVA + Valor Administracion (solo PH)
-        granTotal: item.honorarios + item.iva + (mapped.portafolio !== 'MIXTO' ? mapped.valorAdministracion : 0)
+        // granTotal = solo lo que se cobra: Honorarios + IVA
+        granTotal: item.honorarios + item.iva
       });
       consecutivoCounter++;
     }
