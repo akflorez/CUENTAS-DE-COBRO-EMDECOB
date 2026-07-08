@@ -50,6 +50,7 @@ export default function DashboardIndex() {
   const [dbPortafolio, setDbPortafolio] = React.useState<string>("Todos");
   const [conjuntos, setConjuntos] = React.useState<string[]>([]);
   const [refreshKey, setRefreshKey] = React.useState(0);
+  const [isEmdecob, setIsEmdecob] = React.useState(true); // por defecto true para SSR
 
   const months = [
     { value: "01", label: "Enero" }, { value: "02", label: "Febrero" },
@@ -102,6 +103,17 @@ export default function DashboardIndex() {
   // Forzar re-fetch cada vez que el componente se monta (navegación)
   React.useEffect(() => {
     setRefreshKey(Date.now());
+  }, []);
+
+  // Leer portafolio asignado al usuario y bloquear filtro si no es EMDECOB
+  React.useEffect(() => {
+    const userPortafolio = localStorage.getItem('userPortafolio') || 'Todos';
+    const currentUser = localStorage.getItem('currentUser') || '';
+    const esEmdecob = currentUser === 'EMDECOB' || currentUser === 'TESORERIA';
+    setIsEmdecob(esEmdecob);
+    if (!esEmdecob && userPortafolio !== 'Todos') {
+      setDbPortafolio(userPortafolio);
+    }
   }, []);
 
   React.useEffect(() => {
@@ -174,18 +186,22 @@ export default function DashboardIndex() {
               value={dbEndDate}
               onChange={(e) => { setDbEndDate(e.target.value); setDbMonth(""); }}
             />
-            <div className="flex items-center gap-2 px-3 border-l border-slate-100 ml-2">
-              <span className="text-[10px] font-bold text-slate-400 uppercase">Portafolio</span>
-            </div>
-            <select 
-              className="text-xs font-bold bg-slate-50 border-none rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all cursor-pointer text-slate-600"
-              value={dbPortafolio}
-              onChange={(e) => { setDbPortafolio(e.target.value); setDbConjunto("Todos"); }}
-            >
-              <option value="Todos">Todos</option>
-              <option value="PROPIEDAD HORIZONTAL">P. Horizontal</option>
-              <option value="MIXTO">Mixto</option>
-            </select>
+            {isEmdecob && (
+              <>
+                <div className="flex items-center gap-2 px-3 border-l border-slate-100 ml-2">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase">Portafolio</span>
+                </div>
+                <select 
+                  className="text-xs font-bold bg-slate-50 border-none rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all cursor-pointer text-slate-600"
+                  value={dbPortafolio}
+                  onChange={(e) => { setDbPortafolio(e.target.value); setDbConjunto("Todos"); }}
+                >
+                  <option value="Todos">Todos</option>
+                  <option value="PROPIEDAD HORIZONTAL">P. Horizontal</option>
+                  <option value="MIXTO">Mixto</option>
+                </select>
+              </>
+            )}
 
             <div className="flex items-center gap-2 px-3 border-l border-slate-100 ml-2">
               <Building2 className="w-4 h-4 text-slate-400" />
@@ -197,9 +213,9 @@ export default function DashboardIndex() {
               onChange={(val) => setDbConjunto(val)}
             />
 
-            {(dbStartDate || dbEndDate || dbConjunto !== "Todos" || dbPortafolio !== "Todos" || dbMonth) && (
+            {(dbStartDate || dbEndDate || dbConjunto !== "Todos" || (isEmdecob && dbPortafolio !== "Todos") || dbMonth) && (
               <button 
-                onClick={() => { setDbStartDate(""); setDbEndDate(""); setDbConjunto("Todos"); setDbPortafolio("Todos"); setDbMonth(""); }}
+                onClick={() => { setDbStartDate(""); setDbEndDate(""); setDbConjunto("Todos"); if (isEmdecob) setDbPortafolio("Todos"); setDbMonth(""); }}
                 className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
                 title="Limpiar filtros"
               >

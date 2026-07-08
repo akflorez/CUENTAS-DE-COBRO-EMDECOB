@@ -95,7 +95,13 @@ export default function GestionPage() {
     loadData();
     if (typeof window !== 'undefined') {
       const user = localStorage.getItem('currentUser');
-      setIsAdmin(user === 'EMDECOB' || user === 'PROPIEDAD HORIZONTAL' || user === 'PORTAFOLIO MIXTO' || user === 'PM');
+      const userPortafolio = localStorage.getItem('userPortafolio') || 'Todos';
+      // Solo EMDECOB es admin (puede editar/eliminar y ve todo)
+      setIsAdmin(user === 'EMDECOB');
+      // Bloquear portafolio para usuarios restringidos
+      if (user !== 'EMDECOB' && user !== 'TESORERIA' && userPortafolio !== 'Todos') {
+        setDbPortafolio(userPortafolio);
+      }
     }
   }, [loadData]);
 
@@ -507,15 +513,17 @@ export default function GestionPage() {
                </select>
             </div>
  
-             <select 
-               value={dbPortafolio}
-               onChange={(e) => { setDbPortafolio(e.target.value); setDbConjunto("Todos"); setPage(1); }}
-               className="text-sm border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
-             >
-               <option value="Todos">Portafolio: Todos</option>
-               <option value="PROPIEDAD HORIZONTAL">Propiedad Horizontal</option>
-               <option value="MIXTO">Mixto</option>
-             </select>
+             {isAdmin && (
+               <select 
+                 value={dbPortafolio}
+                 onChange={(e) => { setDbPortafolio(e.target.value); setDbConjunto("Todos"); setPage(1); }}
+                 className="text-sm border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+               >
+                 <option value="Todos">Portafolio: Todos</option>
+                 <option value="PROPIEDAD HORIZONTAL">Propiedad Horizontal</option>
+                 <option value="MIXTO">Mixto</option>
+               </select>
+             )}
 
              <SearchableSelect 
                label="Filtrar por Conjunto"
@@ -537,9 +545,9 @@ export default function GestionPage() {
                </div>
 
                <div className="flex items-end gap-2">
-                 {(dbConjunto !== "Todos" || dbPortafolio !== "Todos" || filterGenMes !== 0 || filterGenAnio !== 0 || overrideFechaPdf !== "" || searchTerm !== "" || searchValor !== "") && (
+                 {(dbConjunto !== "Todos" || (isAdmin && dbPortafolio !== "Todos") || filterGenMes !== 0 || filterGenAnio !== 0 || overrideFechaPdf !== "" || searchTerm !== "" || searchValor !== "") && (
                    <button 
-                     onClick={() => { setDbConjunto("Todos"); setDbPortafolio("Todos"); setFilterGenMes(0); setFilterGenAnio(0); setOverrideFechaPdf(""); setSearchTerm(""); setSearchValor(""); setPage(1); }}
+                     onClick={() => { setDbConjunto("Todos"); if (isAdmin) setDbPortafolio("Todos"); setFilterGenMes(0); setFilterGenAnio(0); setOverrideFechaPdf(""); setSearchTerm(""); setSearchValor(""); setPage(1); }}
                      className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors h-[38px]"
                      title="Limpiar Filtros"
                    >

@@ -24,6 +24,15 @@ export default function LoginPage() {
 
     if (isValidProph || isValidEmdecob || isValidTesoreria || isValidMixto) {
       localStorage.setItem('currentUser', user);
+      // Asignar portafolio según usuario para filtrar automáticamente
+      if (isValidProph) {
+        localStorage.setItem('userPortafolio', 'PROPIEDAD HORIZONTAL');
+      } else if (isValidMixto) {
+        localStorage.setItem('userPortafolio', 'MIXTO');
+      } else {
+        // EMDECOB y TESORERIA ven todo
+        localStorage.setItem('userPortafolio', 'Todos');
+      }
       setTimeout(() => {
         router.push('/dashboard/upload');
       }, 800);
