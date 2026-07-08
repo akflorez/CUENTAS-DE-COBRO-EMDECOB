@@ -128,7 +128,7 @@ export const InvoiceTemplate = React.forwardRef<HTMLDivElement, Props>(({ data }
           <thead>
             <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
               <th style={{ padding: '7px 6px', fontWeight: 700, color: '#475569' }}>Fecha Pago</th>
-              <th style={{ padding: '7px 6px', fontWeight: 700, color: '#475569' }}>Predio</th>
+              <th style={{ padding: '7px 6px', fontWeight: 700, color: '#475569' }}>{isPropiedadHorizontal ? 'Predio' : 'Carteras'}</th>
               <th style={{ padding: '7px 6px', fontWeight: 700, color: '#475569', textAlign: 'right' }}>Abono Cap.</th>
               <th style={{ padding: '7px 6px', fontWeight: 700, color: '#475569', textAlign: 'right' }}>Intereses</th>
               <th style={{ padding: '7px 6px', fontWeight: 700, color: '#475569', textAlign: 'right' }}>Gasto Cobr.</th>
