@@ -117,6 +117,18 @@ export async function getInvoices(
       }
     }
 
+    // Autocorrección: Asignar portafolio MIXTO a entidades mixtas conocidas si están en PH
+    const mixtoEntities = ["DISTRIBUCIONES TOLE", "SERFINANZA", "JULIETA ALZATE OSORIO", "RENTA EQUIPOS"];
+    await prisma.invoice.updateMany({
+      where: {
+        conjuntoNombre: { in: mixtoEntities },
+        portafolio: "PROPIEDAD HORIZONTAL"
+      },
+      data: {
+        portafolio: "MIXTO"
+      }
+    });
+
     const where: any = {};
     if (conjunto && conjunto !== "Todos") {
       where.conjuntoNombre = conjunto;
@@ -324,6 +336,18 @@ export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | 
   
   try {
     const prisma = getPrisma();
+    // Autocorrección: Asignar portafolio MIXTO a entidades mixtas conocidas si están en PH
+    const mixtoEntities = ["DISTRIBUCIONES TOLE", "SERFINANZA", "JULIETA ALZATE OSORIO", "RENTA EQUIPOS"];
+    await prisma.invoice.updateMany({
+      where: {
+        conjuntoNombre: { in: mixtoEntities },
+        portafolio: "PROPIEDAD HORIZONTAL"
+      },
+      data: {
+        portafolio: "MIXTO"
+      }
+    });
+
     const where: any = {};
     // Para el histórico, siempre vamos a traer los últimos 6 meses independientemente del filtro visual del dashboard
     // Pero respetaremos el filtro de conjunto

@@ -67,9 +67,24 @@ export function mapRawRecord(row: any) {
   const fileRefMonth = row._fileGestionMonth;
   const fileRefYear = row._fileGestionYear;
 
-  const rawPortafolio = String(findCol(row, "PORTAFOLIO", "PORTAFOLIO ") || "PROPIEDAD HORIZONTAL").trim().toUpperCase();
-  const isMixto = rawPortafolio.includes("MIXTO");
-  const portafolio = isMixto ? "MIXTO" : "PROPIEDAD HORIZONTAL";
+  const rawPortafolio = String(findCol(row, "PORTAFOLIO", "PORTAFOLIO ") || "").trim().toUpperCase();
+  let portafolio = "PROPIEDAD HORIZONTAL";
+  if (rawPortafolio.includes("MIXTO")) {
+    portafolio = "MIXTO";
+  } else if (rawPortafolio.includes("PROPIEDAD HORIZONTAL")) {
+    portafolio = "PROPIEDAD HORIZONTAL";
+  } else if (rawPortafolio !== "") {
+    portafolio = rawPortafolio;
+  } else {
+    // Fallback al portafolio del usuario autenticado si no viene en el Excel
+    if (typeof window !== 'undefined') {
+      const storedPortafolio = localStorage.getItem('userPortafolio');
+      if (storedPortafolio && storedPortafolio !== 'Todos') {
+        portafolio = storedPortafolio;
+      }
+    }
+  }
+  const isMixto = portafolio === "MIXTO";
 
   const valorAdministracion = parseNumber(findCol(row, "Valor Administracion", "VALOR ADMINISTRACION", "VALOR ADMINISTRACIÓN", "Valor Administración", "ADMINISTRACION", "VALOR ADMIN"));
   const rawCapital = parseNumber(findCol(row, "VALOR CAPITAL", "CAPITAL"));
