@@ -264,15 +264,20 @@ export default function DashboardIndex() {
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex items-center group hover:border-blue-200 transition-all">
-              <div className="p-4 bg-blue-50 text-blue-600 rounded-2xl mr-5 group-hover:scale-110 transition-transform">
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex items-center group hover:border-blue-200 transition-all border-b-4 border-b-blue-500">
+              <div className="p-4 bg-blue-50 text-blue-600 rounded-2xl mr-4 group-hover:scale-110 transition-transform flex-shrink-0">
                 <CheckCircle2 className="w-6 h-6" />
               </div>
-              <div>
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">Días de Pago (Demora)</p>
-                <h3 className="text-xl font-black text-blue-600">
-                  {dbStats.avgPaymentDays || 0} <span className="text-xs font-bold text-slate-400 font-normal">días prom.</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1 truncate">Días de Pago (Demora)</p>
+                <h3 className="text-xl font-black text-blue-600 leading-tight">
+                  {dbStats.avgPaymentDays || 0} <span className="text-xs font-bold text-slate-400">días prom.</span>
                 </h3>
+                <div className="flex items-center gap-2 mt-2 pt-1.5 border-t border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  <span>Mín: <strong className="text-emerald-600 text-xs font-black">{dbStats.minPaymentDays ?? 0}d</strong></span>
+                  <span className="text-slate-300">•</span>
+                  <span>Máx: <strong className="text-rose-600 text-xs font-black">{dbStats.maxPaymentDays ?? 0}d</strong></span>
+                </div>
               </div>
             </div>
 

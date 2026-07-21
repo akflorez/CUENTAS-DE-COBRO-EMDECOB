@@ -390,6 +390,8 @@ export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | 
       countPagado: 0,
       countAnulado: 0,
       avgPaymentDays: 0,
+      minPaymentDays: 0,
+      maxPaymentDays: 0,
       complianceRate: 0,
       avgMoneyLagDays: 0,
       trends: [] as any[],
@@ -398,6 +400,8 @@ export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | 
 
     let totalPaymentTimeMs = 0;
     let paidCountWithDates = 0;
+    let minPaymentMs = Infinity;
+    let maxPaymentMs = -Infinity;
     let totalMoneyLagMs = 0;
     let itemsWithIntakeDate = 0;
     let onTimeCount = 0;
@@ -521,9 +525,11 @@ export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | 
       // Payment Lag
       if (inv.status === 'PAGADA' && inv.fechaPago && elabDate) {
         const diff = new Date(inv.fechaPago).getTime() - elabDateObj.getTime();
-        if (diff > 0) {
+        if (diff >= 0) {
           totalPaymentTimeMs += diff;
           paidCountWithDates++;
+          if (diff < minPaymentMs) minPaymentMs = diff;
+          if (diff > maxPaymentMs) maxPaymentMs = diff;
         }
       }
       
@@ -547,6 +553,8 @@ export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | 
 
     if (paidCountWithDates > 0) {
       stats.avgPaymentDays = Math.ceil(totalPaymentTimeMs / (1000 * 60 * 60 * 24 * paidCountWithDates));
+      stats.minPaymentDays = Math.max(0, Math.floor(minPaymentMs / (1000 * 60 * 60 * 24)));
+      stats.maxPaymentDays = Math.max(0, Math.ceil(maxPaymentMs / (1000 * 60 * 60 * 24)));
     }
 
     if (totalWithElaboracion > 0) {
