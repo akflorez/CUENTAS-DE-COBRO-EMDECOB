@@ -20,7 +20,8 @@ import {
   BarChart3, 
   Timer, 
   X,
-  Calendar
+  Calendar,
+  Percent
 } from "lucide-react";
 import Link from "next/link";
 import { getInvoiceStats, getConjuntos } from "@/app/actions/invoice";
@@ -283,6 +284,36 @@ export default function DashboardIndex() {
                 <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">Anulado ({dbStats.countAnulado})</p>
                 <h3 className="text-xl font-black text-rose-600">
                   {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(dbStats.totalAnulado)}
+                </h3>
+              </div>
+            </div>
+
+            {/* % Recaudado Card */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex items-center group hover:border-emerald-300 transition-all border-b-4 border-b-emerald-500">
+              <div className="p-4 bg-emerald-50 text-emerald-600 rounded-2xl mr-5 group-hover:scale-110 transition-transform">
+                <Percent className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">% Recaudado</p>
+                <h3 className="text-xl font-black text-emerald-600">
+                  {(dbStats.totalMetaHonorarios > 0 
+                    ? Math.min(100, (dbStats.totalPagado / dbStats.totalMetaHonorarios) * 100) 
+                    : 0).toFixed(1)}%
+                </h3>
+              </div>
+            </div>
+
+            {/* % Pendiente Card */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex items-center group hover:border-amber-300 transition-all border-b-4 border-b-amber-500">
+              <div className="p-4 bg-amber-50 text-amber-600 rounded-2xl mr-5 group-hover:scale-110 transition-transform">
+                <Percent className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">% Pendiente</p>
+                <h3 className="text-xl font-black text-amber-600">
+                  {(dbStats.totalMetaHonorarios > 0 
+                    ? Math.max(0, (dbStats.totalPendiente / dbStats.totalMetaHonorarios) * 100) 
+                    : 0).toFixed(1)}%
                 </h3>
               </div>
             </div>
