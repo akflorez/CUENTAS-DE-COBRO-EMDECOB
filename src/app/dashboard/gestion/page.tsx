@@ -23,6 +23,8 @@ export default function GestionPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [filterGenMes, setFilterGenMes] = useState(0); // 0 = Todos
   const [filterGenAnio, setFilterGenAnio] = useState(0); // 0 = Todos
+  const [filterStatus, setFilterStatus] = useState("Todos"); // 'Todos' | 'PENDIENTE' | 'PAGADA' | 'ANULADA'
+  const [sortOrder, setSortOrder] = useState("desc"); // 'desc' | 'asc' | 'valor_desc' | 'valor_asc'
   const [overrideFechaPdf, setOverrideFechaPdf] = useState("");
   const [isDownloading, setIsDownloading] = useState<string | null>(null);
   const templateRef = useRef<HTMLDivElement>(null);
@@ -69,7 +71,7 @@ export default function GestionPage() {
     setError(null);
     try {
       const [invRes, conjRes] = await Promise.all([
-        getInvoices(page, 20, dbConjunto, filterGenMes, filterGenAnio, debouncedSearch, debouncedValor, dbPortafolio),
+        getInvoices(page, 20, dbConjunto, filterGenMes, filterGenAnio, debouncedSearch, debouncedValor, dbPortafolio, filterStatus, sortOrder),
         getConjuntos(dbPortafolio)
       ]);
       
@@ -89,7 +91,7 @@ export default function GestionPage() {
       console.error(err);
     }
     setLoading(false);
-  }, [page, dbConjunto, filterGenMes, filterGenAnio, debouncedSearch, debouncedValor, dbPortafolio]);
+  }, [page, dbConjunto, filterGenMes, filterGenAnio, debouncedSearch, debouncedValor, dbPortafolio, filterStatus, sortOrder]);
 
   useEffect(() => {
     loadData();
@@ -380,6 +382,7 @@ export default function GestionPage() {
       filterDesc.push(`Mes Generación: ${monthsMap[filterGenMes - 1]}`);
     }
     if (filterGenAnio !== 0) filterDesc.push(`Año Generación: ${filterGenAnio}`);
+    if (filterStatus !== "Todos") filterDesc.push(`Estado: ${filterStatus}`);
     if (searchTerm) filterDesc.push(`Búsqueda: "${searchTerm}"`);
     if (searchValor) filterDesc.push(`Valor: "${searchValor}"`);
 
@@ -403,7 +406,8 @@ export default function GestionPage() {
         filterGenAnio,
         searchTerm,
         searchValor,
-        dbPortafolio
+        dbPortafolio,
+        filterStatus
       );
 
       if (res && res.success) {
@@ -593,6 +597,28 @@ export default function GestionPage() {
                value={dbConjunto}
                onChange={(val) => { setDbConjunto(val); setPage(1); }}
              />
+
+             <select 
+               value={filterStatus}
+               onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}
+               className="text-sm border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-medium text-slate-700"
+             >
+               <option value="Todos">Estado: Todos</option>
+               <option value="PENDIENTE">PENDIENTE</option>
+               <option value="PAGADA">PAGADA</option>
+               <option value="ANULADA">ANULADA</option>
+             </select>
+
+             <select 
+               value={sortOrder}
+               onChange={(e) => { setSortOrder(e.target.value); setPage(1); }}
+               className="text-sm border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-medium text-slate-700"
+             >
+               <option value="desc">Ordenar: Más Recientes</option>
+               <option value="asc">Ordenar: Más Antiguos</option>
+               <option value="valor_desc">Ordenar: Mayor a Menor ($)</option>
+               <option value="valor_asc">Ordenar: Menor a Mayor ($)</option>
+             </select>
             
             <div className="flex gap-2">
                <div className="flex flex-col">
@@ -607,9 +633,9 @@ export default function GestionPage() {
                </div>
 
                <div className="flex items-end gap-2">
-                 {(dbConjunto !== "Todos" || (isAdmin && dbPortafolio !== "Todos") || filterGenMes !== 0 || filterGenAnio !== 0 || overrideFechaPdf !== "" || searchTerm !== "" || searchValor !== "") && (
+                 {(dbConjunto !== "Todos" || (isAdmin && dbPortafolio !== "Todos") || filterGenMes !== 0 || filterGenAnio !== 0 || filterStatus !== "Todos" || sortOrder !== "desc" || overrideFechaPdf !== "" || searchTerm !== "" || searchValor !== "") && (
                    <button 
-                     onClick={() => { setDbConjunto("Todos"); if (isAdmin) setDbPortafolio("Todos"); setFilterGenMes(0); setFilterGenAnio(0); setOverrideFechaPdf(""); setSearchTerm(""); setSearchValor(""); setPage(1); }}
+                     onClick={() => { setDbConjunto("Todos"); if (isAdmin) setDbPortafolio("Todos"); setFilterGenMes(0); setFilterGenAnio(0); setFilterStatus("Todos"); setSortOrder("desc"); setOverrideFechaPdf(""); setSearchTerm(""); setSearchValor(""); setPage(1); }}
                      className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors h-[38px]"
                      title="Limpiar Filtros"
                    >
@@ -696,14 +722,26 @@ export default function GestionPage() {
             <table className="w-full text-sm text-left">
                   <thead className="text-xs text-slate-500 uppercase bg-slate-50 sticky top-0 z-10 shadow-sm border-b border-slate-200">
                 <tr>
-                  <th className="px-5 py-4 font-semibold whitespace-nowrap min-w-[100px]">Conse.</th>
+                  <th 
+                    onClick={() => { setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc'); setPage(1); }}
+                    className="px-5 py-4 font-semibold whitespace-nowrap min-w-[100px] cursor-pointer hover:bg-slate-100 transition-colors"
+                    title="Ordenar por fecha de creación"
+                  >
+                    Conse. {sortOrder === 'desc' ? '↓' : sortOrder === 'asc' ? '↑' : ''}
+                  </th>
                   <th className="px-5 py-4 font-semibold min-w-[200px]">Conjunto</th>
                   <th className="px-5 py-4 font-semibold text-center whitespace-nowrap min-w-[120px]">Mes Gestión</th>
                   <th className="px-5 py-4 font-semibold text-center whitespace-nowrap min-w-[120px]">Mes Generación</th>
                   <th className="px-5 py-4 font-semibold text-center whitespace-nowrap min-w-[120px]">Fecha Emisión</th>
                   <th className="px-5 py-4 font-semibold text-right whitespace-nowrap min-w-[110px]">Honorarios</th>
                   <th className="px-5 py-4 font-semibold text-right whitespace-nowrap min-w-[100px]">IVA</th>
-                  <th className="px-5 py-4 font-semibold text-right whitespace-nowrap min-w-[110px]">Total</th>
+                  <th 
+                    onClick={() => { setSortOrder(prev => prev === 'valor_desc' ? 'valor_asc' : 'valor_desc'); setPage(1); }}
+                    className="px-5 py-4 font-semibold text-right whitespace-nowrap min-w-[110px] cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                    title="Ordenar de Mayor a Menor o Viceversa"
+                  >
+                    Total {sortOrder === 'valor_desc' ? '↓' : sortOrder === 'valor_asc' ? '↑' : ''}
+                  </th>
                   <th className="px-5 py-4 font-semibold text-center whitespace-nowrap min-w-[130px]">Estado Pago</th>
                   <th className="px-5 py-4 font-semibold text-center whitespace-nowrap min-w-[125px]">Monto Recaudado</th>
                   <th className="px-5 py-4 font-semibold text-center whitespace-nowrap min-w-[100px]">Validación</th>

@@ -88,7 +88,9 @@ export async function getInvoices(
   genAnio?: number,
   search?: string,
   valor?: string,
-  portafolio?: string
+  portafolio?: string,
+  filterStatus?: string,
+  sortOrder?: string
 ) {
   try {
     const prisma = getPrisma();
@@ -142,6 +144,9 @@ export async function getInvoices(
     if (genAnio && genAnio !== 0) {
       where.generacionAnio = genAnio;
     }
+    if (filterStatus && filterStatus !== "Todos") {
+      where.status = filterStatus;
+    }
 
     if (search && search.trim() !== "") {
       where.consecutivo = {
@@ -185,13 +190,22 @@ export async function getInvoices(
       setTimeout(() => reject(new Error("Tiempo de espera agotado conectando con la base de datos.")), 15000)
     );
 
+    let orderByClause: any = { createdAt: 'desc' };
+    if (sortOrder === 'valor_desc') {
+      orderByClause = { granTotal: 'desc' };
+    } else if (sortOrder === 'valor_asc') {
+      orderByClause = { granTotal: 'asc' };
+    } else if (sortOrder === 'asc') {
+      orderByClause = { createdAt: 'asc' };
+    }
+
     const [invoices, totalCount] = await Promise.race([
       Promise.all([
         (prisma.invoice as any).findMany({
           where,
           skip: (page - 1) * pageSize,
           take: pageSize,
-          orderBy: { createdAt: 'desc' },
+          orderBy: orderByClause,
           include: {
             items: true,
             payments: true
@@ -704,7 +718,8 @@ export async function deleteInvoicesByFilter(
   genAnio?: number,
   search?: string,
   valor?: string,
-  portafolio?: string
+  portafolio?: string,
+  filterStatus?: string
 ) {
   try {
     const prisma = getPrisma();
@@ -720,6 +735,9 @@ export async function deleteInvoicesByFilter(
     }
     if (genAnio && genAnio !== 0) {
       where.generacionAnio = genAnio;
+    }
+    if (filterStatus && filterStatus !== "Todos") {
+      where.status = filterStatus;
     }
     if (search && search.trim() !== "") {
       where.consecutivo = {
