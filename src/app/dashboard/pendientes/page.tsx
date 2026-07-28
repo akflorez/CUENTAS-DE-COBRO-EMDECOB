@@ -1,15 +1,16 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { getPendingInvoices } from "@/app/actions/invoice";
-import { ArrowLeft, Clock, Building2, ListChecks } from "lucide-react";
+import { ArrowLeft, Clock, Building2, ListChecks, ArrowUpDown } from "lucide-react";
 
 export default function PendientesPage() {
   const router = useRouter();
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sortKey, setSortKey] = useState<string>("total_desc"); // Default: Mayor a Menor
 
   useEffect(() => {
     async function load() {
@@ -40,10 +41,50 @@ export default function PendientesPage() {
     return months[m - 1] || 'N/A';
   };
 
+  const sortedInvoices = useMemo(() => {
+    const list = [...invoices];
+    if (sortKey === 'total_desc') {
+      return list.sort((a, b) => (b.granTotal || 0) - (a.granTotal || 0));
+    }
+    if (sortKey === 'total_asc') {
+      return list.sort((a, b) => (a.granTotal || 0) - (b.granTotal || 0));
+    }
+    if (sortKey === 'gestion') {
+      return list.sort((a, b) => {
+        const valA = (a.gestionAnio || 0) * 100 + (a.gestionMes || 0);
+        const valB = (b.gestionAnio || 0) * 100 + (b.gestionMes || 0);
+        return valB - valA;
+      });
+    }
+    if (sortKey === 'generacion') {
+      return list.sort((a, b) => {
+        const valA = (a.generacionAnio || 0) * 100 + (a.generacionMes || 0);
+        const valB = (b.generacionAnio || 0) * 100 + (b.generacionMes || 0);
+        return valB - valA;
+      });
+    }
+    if (sortKey === 'consecutivo_asc') {
+      return list.sort((a, b) => (a.consecutivo || '').localeCompare(b.consecutivo || ''));
+    }
+    return list.sort((a, b) => (b.consecutivo || '').localeCompare(a.consecutivo || ''));
+  }, [invoices, sortKey]);
+
+  const toggleSort = (key: string) => {
+    if (key === 'total') {
+      setSortKey(prev => prev === 'total_desc' ? 'total_asc' : 'total_desc');
+    } else if (key === 'gestion') {
+      setSortKey(prev => prev === 'gestion' ? 'total_desc' : 'gestion');
+    } else if (key === 'generacion') {
+      setSortKey(prev => prev === 'generacion' ? 'total_desc' : 'generacion');
+    } else if (key === 'consecutivo') {
+      setSortKey(prev => prev === 'consecutivo_desc' ? 'consecutivo_asc' : 'consecutivo_desc');
+    }
+  };
+
   return (
     <div className="max-w-[98%] mx-auto pb-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8">
         <div className="flex items-center gap-4">
           <button 
             onClick={() => router.push("/dashboard")}
@@ -61,11 +102,26 @@ export default function PendientesPage() {
           </div>
         </div>
         
-        <div className="bg-amber-50 text-amber-800 border border-amber-100 rounded-2xl px-5 py-3 flex items-center gap-3 shadow-sm">
-          <Clock className="w-5 h-5 text-amber-600 animate-pulse" />
-          <div>
-            <div className="text-[10px] uppercase font-bold text-amber-600 tracking-wider">Total Pendientes</div>
-            <div className="text-lg font-black">{invoices.length} cuentas</div>
+        <div className="flex flex-wrap items-center gap-3">
+          <select
+            value={sortKey}
+            onChange={(e) => setSortKey(e.target.value)}
+            className="text-xs font-bold border border-slate-200 rounded-2xl px-4 py-3 outline-none focus:ring-2 focus:ring-emerald-500 bg-white text-slate-700 shadow-sm cursor-pointer"
+          >
+            <option value="total_desc">Ordenar: Mayor a Menor ($ Total)</option>
+            <option value="total_asc">Ordenar: Menor a Mayor ($ Total)</option>
+            <option value="gestion">Ordenar: Mes de Gestión</option>
+            <option value="generacion">Ordenar: Mes de Generación</option>
+            <option value="consecutivo_desc">Ordenar: Consecutivo (Descendente)</option>
+            <option value="consecutivo_asc">Ordenar: Consecutivo (Ascendente)</option>
+          </select>
+
+          <div className="bg-amber-50 text-amber-800 border border-amber-100 rounded-2xl px-5 py-3 flex items-center gap-3 shadow-sm">
+            <Clock className="w-5 h-5 text-amber-600 animate-pulse" />
+            <div>
+              <div className="text-[10px] uppercase font-bold text-amber-600 tracking-wider">Total Pendientes</div>
+              <div className="text-lg font-black">{sortedInvoices.length} cuentas</div>
+            </div>
           </div>
         </div>
       </div>
@@ -81,7 +137,7 @@ export default function PendientesPage() {
           <div className="p-20 text-center">
             <p className="text-red-500 font-bold">{error}</p>
           </div>
-        ) : invoices.length === 0 ? (
+        ) : sortedInvoices.length === 0 ? (
           <div className="p-20 text-center flex flex-col items-center justify-center gap-3">
             <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center shadow-inner">
               <ListChecks className="w-8 h-8" />
@@ -93,18 +149,48 @@ export default function PendientesPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-widest">
-                  <th className="px-6 py-4.5">Consecutivo</th>
+                <tr className="bg-slate-50 border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-widest select-none">
+                  <th 
+                    onClick={() => toggleSort('consecutivo')}
+                    className="px-6 py-4.5 cursor-pointer hover:bg-slate-100 hover:text-slate-700 transition-colors"
+                    title="Clic para ordenar por Consecutivo"
+                  >
+                    Consecutivo {sortKey.includes('consecutivo') && (sortKey === 'consecutivo_desc' ? '↓' : '↑')}
+                  </th>
                   <th className="px-6 py-4.5">Conjunto / Entidad</th>
-                  <th className="px-6 py-4.5">Mes Gestión</th>
-                  <th className="px-6 py-4.5">Mes Generación</th>
-                  <th className="px-6 py-4.5 text-right">Valor Neto</th>
+                  <th 
+                    onClick={() => toggleSort('gestion')}
+                    className="px-6 py-4.5 cursor-pointer hover:bg-slate-100 hover:text-slate-700 transition-colors"
+                    title="Clic para ordenar por Mes de Gestión"
+                  >
+                    Mes Gestión {sortKey === 'gestion' && '↓'}
+                  </th>
+                  <th 
+                    onClick={() => toggleSort('generacion')}
+                    className="px-6 py-4.5 cursor-pointer hover:bg-slate-100 hover:text-slate-700 transition-colors"
+                    title="Clic para ordenar por Mes de Generación"
+                  >
+                    Mes Generación {sortKey === 'generacion' && '↓'}
+                  </th>
+                  <th 
+                    onClick={() => toggleSort('total')}
+                    className="px-6 py-4.5 text-right cursor-pointer hover:bg-slate-100 hover:text-slate-700 transition-colors"
+                    title="Clic para ordenar por Valor"
+                  >
+                    Valor Neto
+                  </th>
                   <th className="px-6 py-4.5 text-right">IVA</th>
-                  <th className="px-6 py-4.5 text-right">Total a Pagar</th>
+                  <th 
+                    onClick={() => toggleSort('total')}
+                    className="px-6 py-4.5 text-right cursor-pointer hover:bg-slate-100 hover:text-emerald-700 transition-colors"
+                    title="Clic para ordenar Mayor a Menor / Menor a Mayor"
+                  >
+                    Total a Pagar {sortKey === 'total_desc' ? '↓' : sortKey === 'total_asc' ? '↑' : ''}
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-[13px]">
-                {invoices.map((inv) => (
+                {sortedInvoices.map((inv) => (
                   <tr key={inv.id} className="hover:bg-slate-50/50 transition-colors group">
                     <td className="px-6 py-4 font-bold text-slate-700 group-hover:text-emerald-600 transition-colors">
                       {inv.consecutivo}
