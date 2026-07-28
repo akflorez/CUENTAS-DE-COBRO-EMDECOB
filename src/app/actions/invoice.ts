@@ -772,3 +772,24 @@ export async function deleteInvoicesByFilter(
   }
 }
 
+export async function getPendingInvoices(portafolio?: string) {
+  try {
+    const prisma = getPrisma();
+    const where: any = {
+      status: 'PENDIENTE'
+    };
+    if (portafolio && portafolio !== "Todos") {
+      where.portafolio = portafolio;
+    }
+    const invoices = await prisma.invoice.findMany({
+      where,
+      orderBy: { createdAt: 'desc' }
+    });
+    return JSON.parse(JSON.stringify({ success: true, invoices }));
+  } catch (error: any) {
+    console.error('Error fetching pending invoices:', error);
+    return JSON.parse(JSON.stringify({ success: false, error: error.message }));
+  }
+}
+
+
