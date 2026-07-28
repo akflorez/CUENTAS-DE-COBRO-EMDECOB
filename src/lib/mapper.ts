@@ -220,7 +220,7 @@ export function groupRecords(
         honorariosBase: rawHonorarios,
         comisionExito: 0,
         iva: rawIva,
-        total: rawHonorarios + rawIva,
+        total: mapped.capital + mapped.intereses + rawHonorarios + rawIva,
         valorAdministracion: mapped.valorAdministracion
       };
       addItemToGroup(conjunto, mapped, mainItem, raw);
@@ -242,8 +242,45 @@ export function groupRecords(
         valorAdministracion: 0
       };
       addItemToGroup(exitoGroupKey, mapped, exitoItem, raw);
+    } else if (isTole && comisionExito > 0 && mode === 'junto') {
+      const rawHonorarios = parseNumber(findCol(raw, "HONORARIOS", "HONORARIOS ", "GASTOS COBRANZAS"));
+      const rawIva = parseNumber(findCol(raw, "IVA", "IVA "));
+
+      // 1. Renglón 1 (Pago Deudor): Capital + Honorarios Base + IVA Base = Cuadrado con lo que pagó el deudor (p.ej. 1.400.000)
+      const mainItem: RecordItem = {
+        fechaPago: mapped.fechaPago,
+        fechaIngresoPorte: mapped.fechaIngreso,
+        fechaElaboracion: mapped.fechaElaboracion,
+        predio: `${mapped.direccion} ${mapped.matricula ? `(${mapped.matricula})` : ''}`.trim(),
+        capital: mapped.capital,
+        intereses: mapped.intereses,
+        honorarios: rawHonorarios,
+        honorariosBase: rawHonorarios,
+        comisionExito: 0,
+        iva: rawIva,
+        total: mapped.capital + mapped.intereses + rawHonorarios + rawIva,
+        valorAdministracion: mapped.valorAdministracion
+      };
+      addItemToGroup(conjunto, mapped, mainItem, raw);
+
+      // 2. Renglón 2 (Comisión de Éxito más IVA): Renglón abajo en la misma factura
+      const exitoItem: RecordItem = {
+        fechaPago: mapped.fechaPago,
+        fechaIngresoPorte: mapped.fechaIngreso,
+        fechaElaboracion: mapped.fechaElaboracion,
+        predio: "Comisión Éxito + IVA",
+        capital: 0,
+        intereses: 0,
+        honorarios: comisionExito,
+        honorariosBase: 0,
+        comisionExito: comisionExito,
+        iva: iva2,
+        total: comisionExito + iva2,
+        valorAdministracion: 0
+      };
+      addItemToGroup(conjunto, mapped, exitoItem, raw);
     } else {
-      // Modo 'junto' (default) o no es Tole
+      // Modo 'junto' estándar (sin comisión de éxito o no es Tole)
       const rawHonorarios = parseNumber(findCol(raw, "HONORARIOS", "HONORARIOS ", "GASTOS COBRANZAS"));
       const item: RecordItem = {
         fechaPago: mapped.fechaPago,
