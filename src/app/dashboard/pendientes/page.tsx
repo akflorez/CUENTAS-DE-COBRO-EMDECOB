@@ -3,7 +3,8 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { getPendingInvoices } from "@/app/actions/invoice";
-import { ArrowLeft, Clock, Building2, ListChecks, Percent } from "lucide-react";
+import { ArrowLeft, Clock, Building2, ListChecks, Percent, FileSpreadsheet } from "lucide-react";
+import * as XLSX from "xlsx";
 
 export default function PendientesPage() {
   const router = useRouter();
@@ -86,6 +87,27 @@ export default function PendientesPage() {
     }
   };
 
+  const handleExportExcel = () => {
+    const dataToExport = sortedInvoices.map((inv) => {
+      const pct = totalPendingNeto > 0 ? ((inv.honorariosTotal || 0) / totalPendingNeto) * 100 : 0;
+      return {
+        "Consecutivo": inv.consecutivo,
+        "Conjunto / Entidad": inv.conjuntoNombre,
+        "Mes Gestión": inv.gestionMes ? `${getMonthName(inv.gestionMes)} ${inv.gestionAnio || ''}` : 'N/A',
+        "Mes Generación": inv.generacionMes ? `${getMonthName(inv.generacionMes)} ${inv.generacionAnio || ''}` : 'N/A',
+        "Valor Neto": inv.honorariosTotal,
+        "IVA": inv.ivaTotal,
+        "Total a Pagar": inv.granTotal,
+        "% Participación (Neto)": `${pct.toFixed(1)}%`
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Cuentas Pendientes");
+    XLSX.writeFile(workbook, `cuentas_pendientes_${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
   return (
     <div className="max-w-[98%] mx-auto pb-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header */}
@@ -121,6 +143,16 @@ export default function PendientesPage() {
             <option value="consecutivo_desc">Ordenar: Consecutivo (Descendente)</option>
             <option value="consecutivo_asc">Ordenar: Consecutivo (Ascendente)</option>
           </select>
+
+          <button 
+            onClick={handleExportExcel}
+            disabled={sortedInvoices.length === 0}
+            className="px-4 py-3 bg-emerald-600 text-white rounded-2xl text-xs font-bold flex items-center gap-2 hover:bg-emerald-700 transition-all shadow-sm shadow-emerald-600/20 disabled:opacity-50 cursor-pointer"
+            title="Exportar listado a Excel"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            <span>Exportar Excel</span>
+          </button>
 
           <div className="bg-amber-50 text-amber-900 border border-amber-200/60 rounded-2xl px-5 py-2.5 flex items-center gap-3 shadow-sm">
             <Clock className="w-5 h-5 text-amber-600 animate-pulse" />
