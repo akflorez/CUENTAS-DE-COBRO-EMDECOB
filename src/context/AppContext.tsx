@@ -30,6 +30,10 @@ export type AppContextType = {
   // Consecutivo inicial
   startingConsecutive: number;
   setStartingConsecutive: (num: number) => void;
+
+  // Modo de facturación Comisión de Éxito para Distribuciones Tole
+  comisionExitoMode: 'junto' | 'separado';
+  setComisionExitoMode: (mode: 'junto' | 'separado') => void;
   
   clearData: () => void;
 };
@@ -40,6 +44,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [filesData, setFilesData] = useState<FileData[]>([]);
   const [directoryData, setDirectoryData] = useState<any[]>([]);
   const [startingConsecutive, setStartingConsecutive] = useState<number>(1);
+  const [comisionExitoMode, setComisionExitoMode] = useState<'junto' | 'separado'>('junto');
 
   // Derivamos la data unificada e inyectamos la fecha de referencia y gestión si existe
   const excelData = filesData.flatMap(file => 
@@ -55,6 +60,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setFilesData([]);
     setDirectoryData([]);
     setStartingConsecutive(1);
+    setComisionExitoMode('junto');
   };
 
   return (
@@ -66,6 +72,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setDirectoryData,
       startingConsecutive,
       setStartingConsecutive,
+      comisionExitoMode,
+      setComisionExitoMode,
       clearData 
     }}>
       {children}

@@ -129,47 +129,25 @@ export function mapRawRecord(row: any) {
   };
 }
 
-export function groupRecords(rawRows: any[], startingConsecutive: number = 1): MappedRecord[] {
+export function groupRecords(
+  rawRows: any[], 
+  startingConsecutive: number = 1,
+  options: { comisionExitoMode?: 'junto' | 'separado' } = {}
+): MappedRecord[] {
+  const mode = options.comisionExitoMode || 'junto';
   const grouped = new Map<string, MappedRecord>();
   let consecutivoCounter = startingConsecutive;
 
-  for (const raw of rawRows) {
-    const mapped = mapRawRecord(raw);
-    
-    // FILTRO ESTRICTO: Solo procesamos los que tienen cuenta de cobro PENDIENTE.
-    // Ignoramos celdas vacias, no existenes, o cualquier otro estado.
-    if (!mapped.estadoCobro || typeof mapped.estadoCobro !== 'string' || !mapped.estadoCobro.trim().toUpperCase().includes('PENDIENTE')) {
-        continue; 
-    }
-
-    const conjunto = mapped.conjuntoNombre || 'CONJUNTO NO ESPECIFICADO';
-    
-    // Crear el item para la tabla
-    const item: RecordItem = {
-      fechaPago: mapped.fechaPago,
-      fechaIngresoPorte: mapped.fechaIngreso,
-      fechaElaboracion: mapped.fechaElaboracion,
-      predio: `${mapped.direccion} ${mapped.matricula ? `(${mapped.matricula})` : ''}`.trim(),
-      capital: mapped.capital,
-      intereses: mapped.intereses,
-      honorarios: mapped.honorarios,
-      iva: mapped.iva,
-      total: mapped.total,
-      valorAdministracion: mapped.valorAdministracion
-    };
-
-    if (grouped.has(conjunto)) {
-      const existing = grouped.get(conjunto)!;
+  const addItemToGroup = (groupKey: string, mapped: any, item: RecordItem, raw: any) => {
+    if (grouped.has(groupKey)) {
+      const existing = grouped.get(groupKey)!;
       existing.items.push(item);
       existing.capitalTotal += item.capital;
       existing.interesesTotal += item.intereses;
       existing.honorariosTotal += item.honorarios;
       existing.ivaTotal += item.iva;
-      // granTotal = solo lo que se cobra: Honorarios + IVA
       existing.granTotal += item.honorarios + item.iva;
     } else {
-      // Determinamos el mes de gestión: PRIORIDAD ABSOLUTA a la selección manual del usuario al subir el archivo
-      // para cumplir con la petición de "seleccione marzo debe aparecer en la etiqueta".
       let gMes: number = raw._fileGestionMonth || (mapped.archivoGestionMes ? parseInt(String(mapped.archivoGestionMes)) : null);
       let gAnio: number = raw._fileGestionYear || (mapped.archivoGestionAnio ? parseInt(String(mapped.archivoGestionAnio)) : null);
       
@@ -181,10 +159,10 @@ export function groupRecords(rawRows: any[], startingConsecutive: number = 1): M
         }
       }
 
-      grouped.set(conjunto, {
+      grouped.set(groupKey, {
         nombre: mapped.nombre,
         cedula: mapped.cedula,
-        conjuntoNombre: conjunto,
+        conjuntoNombre: groupKey,
         asesor: mapped.asesor,
         portafolio: mapped.portafolio,
         estadoCobro: mapped.estadoCobro,
@@ -196,10 +174,75 @@ export function groupRecords(rawRows: any[], startingConsecutive: number = 1): M
         interesesTotal: item.intereses,
         honorariosTotal: item.honorarios,
         ivaTotal: item.iva,
-        // granTotal = solo lo que se cobra: Honorarios + IVA
         granTotal: item.honorarios + item.iva
       });
       consecutivoCounter++;
+    }
+  };
+
+  for (const raw of rawRows) {
+    const mapped = mapRawRecord(raw);
+    
+    // FILTRO ESTRICTO: Solo procesamos los que tienen cuenta de cobro PENDIENTE.
+    if (!mapped.estadoCobro || typeof mapped.estadoCobro !== 'string' || !mapped.estadoCobro.trim().toUpperCase().includes('PENDIENTE')) {
+        continue; 
+    }
+
+    const conjunto = mapped.conjuntoNombre || 'CONJUNTO NO ESPECIFICADO';
+    const isTole = conjunto.trim().toUpperCase().includes('TOLE');
+
+    const comisionExito = parseNumber(findCol(raw, "Comisión Exito", "Comision Exito", "COMISION EXITO", "Comisión Éxito", "Comision de Exito"));
+    const iva2 = parseNumber(findCol(raw, "IVA2", "IVA 2"));
+
+    if (isTole && comisionExito > 0 && mode === 'separado') {
+      const rawHonorarios = parseNumber(findCol(raw, "HONORARIOS", "HONORARIOS ", "GASTOS COBRANZAS"));
+      const rawIva = parseNumber(findCol(raw, "IVA", "IVA "));
+
+      // 1. Cuenta principal (Honorarios Base)
+      const mainItem: RecordItem = {
+        fechaPago: mapped.fechaPago,
+        fechaIngresoPorte: mapped.fechaIngreso,
+        fechaElaboracion: mapped.fechaElaboracion,
+        predio: `${mapped.direccion} ${mapped.matricula ? `(${mapped.matricula})` : ''}`.trim(),
+        capital: mapped.capital,
+        intereses: mapped.intereses,
+        honorarios: rawHonorarios,
+        iva: rawIva,
+        total: rawHonorarios + rawIva,
+        valorAdministracion: mapped.valorAdministracion
+      };
+      addItemToGroup(conjunto, mapped, mainItem, raw);
+
+      // 2. Cuenta separada (Comisión Éxito)
+      const exitoGroupKey = `${conjunto} (COMISIÓN ÉXITO)`;
+      const exitoItem: RecordItem = {
+        fechaPago: mapped.fechaPago,
+        fechaIngresoPorte: mapped.fechaIngreso,
+        fechaElaboracion: mapped.fechaElaboracion,
+        predio: `${mapped.direccion} ${mapped.matricula ? `(${mapped.matricula})` : ''} - Comisión Éxito`.trim(),
+        capital: 0,
+        intereses: 0,
+        honorarios: comisionExito,
+        iva: iva2,
+        total: comisionExito + iva2,
+        valorAdministracion: 0
+      };
+      addItemToGroup(exitoGroupKey, mapped, exitoItem, raw);
+    } else {
+      // Modo 'junto' (default) o no es Tole
+      const item: RecordItem = {
+        fechaPago: mapped.fechaPago,
+        fechaIngresoPorte: mapped.fechaIngreso,
+        fechaElaboracion: mapped.fechaElaboracion,
+        predio: `${mapped.direccion} ${mapped.matricula ? `(${mapped.matricula})` : ''}`.trim(),
+        capital: mapped.capital,
+        intereses: mapped.intereses,
+        honorarios: mapped.honorarios,
+        iva: mapped.iva,
+        total: mapped.total,
+        valorAdministracion: mapped.valorAdministracion
+      };
+      addItemToGroup(conjunto, mapped, item, raw);
     }
   }
 

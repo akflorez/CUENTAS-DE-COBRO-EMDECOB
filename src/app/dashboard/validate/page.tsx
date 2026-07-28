@@ -11,7 +11,7 @@ import { saveInvoiceRecord } from "@/app/actions/invoice";
 
 export default function ValidatePage() {
   const router = useRouter();
-  const { excelData, filesData, startingConsecutive } = useAppContext();
+  const { excelData, filesData, startingConsecutive, comisionExitoMode, setComisionExitoMode } = useAppContext();
   const [filter, setFilter] = useState<'all' | 'valid' | 'invalid'>('all');
   const [searchTerm, setSearchTerm] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -27,10 +27,18 @@ export default function ValidatePage() {
     }
   }, [excelData, router]);
 
+  const hasToleData = useMemo(() => {
+    if (!excelData) return false;
+    return excelData.some(r => {
+      const c = String(r['CARTERA'] || r['PORTAFOLIO'] || r['CONJUNTO'] || '').toUpperCase();
+      return c.includes('TOLE');
+    });
+  }, [excelData]);
+
   // Cargar registros agrupados al inicio
   useEffect(() => {
     if (excelData && excelData.length > 0) {
-      const grouped = groupRecords(excelData, startingConsecutive).map((mapped) => {
+      const grouped = groupRecords(excelData, startingConsecutive, { comisionExitoMode }).map((mapped) => {
         return {
           ...validateRecord(mapped),
           mapped
@@ -38,7 +46,7 @@ export default function ValidatePage() {
       });
       setLocalRecords(grouped);
     }
-  }, [excelData, startingConsecutive]);
+  }, [excelData, startingConsecutive, comisionExitoMode]);
 
   const stats = useMemo(() => {
     const validCount = localRecords.filter(v => v.isValid).length;
@@ -146,8 +154,40 @@ export default function ValidatePage() {
           "mb-6 p-4 rounded-xl border flex items-center animate-in slide-in-from-top-2",
           saveStatus.success ? "bg-green-50 border-green-200 text-green-800" : "bg-red-50 border-red-200 text-red-800"
         )}>
-          {saveStatus.success ? <CheckCircle2 className="w-5 h-5 mr-3" /> : <AlertCircle className="w-5 h-5 mr-3" />}
-          <span className="font-medium">{saveStatus.message}</span>
+          {saveStatus.success ? <CheckCircle2 className="w-5 h-5 mr-3 shrink-0 text-green-600" /> : <AlertCircle className="w-5 h-5 mr-3 shrink-0 text-red-600" />}
+          <span className="text-sm font-medium">{saveStatus.message}</span>
+        </div>
+      )}
+
+      {hasToleData && (
+        <div className="bg-amber-50/90 border border-amber-200 rounded-2xl p-4 mb-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in duration-300">
+          <div>
+            <span className="text-xs font-black uppercase text-amber-900 tracking-wider flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+              Opción de Facturación: Comisión de Éxito (Distribuciones Tole)
+            </span>
+            <p className="text-xs text-amber-700 mt-0.5">
+              Decide cómo deseas emitir la comisión de éxito en las cuentas de cobro generadas.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-amber-200 shadow-2xs self-start sm:self-auto">
+            <button
+              onClick={() => setComisionExitoMode('junto')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                comisionExitoMode === 'junto' ? 'bg-amber-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Facturar Todo Junto
+            </button>
+            <button
+              onClick={() => setComisionExitoMode('separado')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                comisionExitoMode === 'separado' ? 'bg-amber-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Facturar Comisión Aparte
+            </button>
+          </div>
         </div>
       )}
 

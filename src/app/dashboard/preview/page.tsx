@@ -12,7 +12,7 @@ import { createPortal } from "react-dom";
 
 export default function PreviewPage() {
   const router = useRouter();
-  const { excelData, filesData, startingConsecutive } = useAppContext();
+  const { excelData, filesData, startingConsecutive, comisionExitoMode, setComisionExitoMode } = useAppContext();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState("");
@@ -24,6 +24,14 @@ export default function PreviewPage() {
   const [pdfOrientation, setPdfOrientation] = useState<PdfOrientation>('portrait');
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+
+  const hasToleData = useMemo(() => {
+    if (!excelData) return false;
+    return excelData.some(r => {
+      const c = String(r['CARTERA'] || r['PORTAFOLIO'] || r['CONJUNTO'] || '').toUpperCase();
+      return c.includes('TOLE');
+    });
+  }, [excelData]);
 
   // Altura de contenido por hoja Carta (mm → px):
   // Letter = 279mm; márgenes sup+inf = 12mm c/u → content = 255mm → aprox 950px a 96dpi (ajustado para coincidir exacto con html2pdf)
@@ -72,11 +80,11 @@ export default function PreviewPage() {
 
   const validRecords = useMemo(() => {
     if (!excelData) return [];
-    return groupRecords(excelData, startingConsecutive).map((mapped) => ({ 
+    return groupRecords(excelData, startingConsecutive, { comisionExitoMode }).map((mapped) => ({ 
       ...validateRecord(mapped), 
       mapped 
     })).filter(r => r.isValid);
-  }, [excelData, startingConsecutive]);
+  }, [excelData, startingConsecutive, comisionExitoMode]);
 
   if (!excelData || excelData.length === 0 || validRecords.length === 0) {
     return (
@@ -193,6 +201,38 @@ export default function PreviewPage() {
           </button>
         </div>
       </div>
+
+      {hasToleData && (
+        <div className="bg-amber-50/90 border border-amber-200 rounded-2xl p-4 mb-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in duration-300">
+          <div>
+            <span className="text-xs font-black uppercase text-amber-900 tracking-wider flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+              Opción de Facturación: Comisión de Éxito (Distribuciones Tole)
+            </span>
+            <p className="text-xs text-amber-700 mt-0.5">
+              Decide cómo deseas emitir la comisión de éxito en las cuentas de cobro generadas.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-amber-200 shadow-2xs self-start sm:self-auto">
+            <button
+              onClick={() => setComisionExitoMode('junto')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                comisionExitoMode === 'junto' ? 'bg-amber-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Facturar Todo Junto
+            </button>
+            <button
+              onClick={() => setComisionExitoMode('separado')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                comisionExitoMode === 'separado' ? 'bg-amber-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Facturar Comisión Aparte
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Controls */}
