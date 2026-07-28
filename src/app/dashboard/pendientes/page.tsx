@@ -41,17 +41,18 @@ export default function PendientesPage() {
     return months[m - 1] || 'N/A';
   };
 
-  const totalPendingSum = useMemo(() => {
-    return invoices.reduce((acc, inv) => acc + (inv.granTotal || 0), 0);
+  // Calcular el Total Pendiente NETO (Suma de honorariosTotal sin IVA)
+  const totalPendingNeto = useMemo(() => {
+    return invoices.reduce((acc, inv) => acc + (inv.honorariosTotal || 0), 0);
   }, [invoices]);
 
   const sortedInvoices = useMemo(() => {
     const list = [...invoices];
     if (sortKey === 'total_desc' || sortKey === 'pct_desc') {
-      return list.sort((a, b) => (b.granTotal || 0) - (a.granTotal || 0));
+      return list.sort((a, b) => (b.honorariosTotal || 0) - (a.honorariosTotal || 0));
     }
     if (sortKey === 'total_asc' || sortKey === 'pct_asc') {
-      return list.sort((a, b) => (a.granTotal || 0) - (b.granTotal || 0));
+      return list.sort((a, b) => (a.honorariosTotal || 0) - (b.honorariosTotal || 0));
     }
     if (sortKey === 'gestion') {
       return list.sort((a, b) => {
@@ -102,7 +103,7 @@ export default function PendientesPage() {
               <div className="h-8 w-1.5 bg-amber-500 rounded-full"></div>
               <h1 className="text-2xl font-black text-slate-800 tracking-tight">Cuentas de Cobro Pendientes</h1>
             </div>
-            <p className="text-slate-500 text-sm mt-1">Listado detallado con porcentaje de participación sobre el total pendiente</p>
+            <p className="text-slate-500 text-sm mt-1">Listado detallado con porcentaje de participación sobre el total pendiente (Neto)</p>
           </div>
         </div>
         
@@ -112,9 +113,9 @@ export default function PendientesPage() {
             onChange={(e) => setSortKey(e.target.value)}
             className="text-xs font-bold border border-slate-200 rounded-2xl px-4 py-3 outline-none focus:ring-2 focus:ring-emerald-500 bg-white text-slate-700 shadow-sm cursor-pointer"
           >
-            <option value="total_desc">Ordenar: Mayor a Menor ($ Total)</option>
+            <option value="total_desc">Ordenar: Mayor a Menor (Valor Neto)</option>
             <option value="pct_desc">Ordenar: % Participación (Mayor a Menor)</option>
-            <option value="total_asc">Ordenar: Menor a Mayor ($ Total)</option>
+            <option value="total_asc">Ordenar: Menor a Mayor (Valor Neto)</option>
             <option value="gestion">Ordenar: Mes de Gestión</option>
             <option value="generacion">Ordenar: Mes de Generación</option>
             <option value="consecutivo_desc">Ordenar: Consecutivo (Descendente)</option>
@@ -124,9 +125,9 @@ export default function PendientesPage() {
           <div className="bg-amber-50 text-amber-900 border border-amber-200/60 rounded-2xl px-5 py-2.5 flex items-center gap-3 shadow-sm">
             <Clock className="w-5 h-5 text-amber-600 animate-pulse" />
             <div>
-              <div className="text-[10px] uppercase font-bold text-amber-600 tracking-wider">Monto Total Pendiente</div>
+              <div className="text-[10px] uppercase font-bold text-amber-600 tracking-wider">Pendiente (Neto)</div>
               <div className="text-base font-black flex items-baseline gap-2">
-                <span>{formatCurrency(totalPendingSum)}</span>
+                <span>{formatCurrency(totalPendingNeto)}</span>
                 <span className="text-xs text-amber-700 font-semibold">({sortedInvoices.length} cuentas)</span>
               </div>
             </div>
@@ -183,22 +184,16 @@ export default function PendientesPage() {
                   <th 
                     onClick={() => toggleSort('total')}
                     className="px-6 py-4.5 text-right cursor-pointer hover:bg-slate-100 hover:text-slate-700 transition-colors"
-                    title="Clic para ordenar por Valor"
+                    title="Clic para ordenar por Valor Neto"
                   >
-                    Valor Neto
+                    Valor Neto {sortKey.includes('total') && (sortKey === 'total_desc' ? '↓' : '↑')}
                   </th>
                   <th className="px-6 py-4.5 text-right">IVA</th>
-                  <th 
-                    onClick={() => toggleSort('total')}
-                    className="px-6 py-4.5 text-right cursor-pointer hover:bg-slate-100 hover:text-emerald-700 transition-colors"
-                    title="Clic para ordenar Mayor a Menor / Menor a Mayor"
-                  >
-                    Total a Pagar {sortKey.includes('total') && (sortKey === 'total_desc' ? '↓' : '↑')}
-                  </th>
+                  <th className="px-6 py-4.5 text-right">Total a Pagar</th>
                   <th 
                     onClick={() => toggleSort('pct')}
                     className="px-6 py-4.5 text-right cursor-pointer hover:bg-slate-100 hover:text-amber-700 transition-colors whitespace-nowrap"
-                    title="Porcentaje de participación sobre el total pendiente"
+                    title="Porcentaje de participación sobre el valor neto pendiente total"
                   >
                     % Participación {sortKey.includes('pct') && (sortKey === 'pct_desc' ? '↓' : '↑')}
                   </th>
@@ -206,7 +201,7 @@ export default function PendientesPage() {
               </thead>
               <tbody className="divide-y divide-slate-100 text-[13px]">
                 {sortedInvoices.map((inv) => {
-                  const pct = totalPendingSum > 0 ? ((inv.granTotal || 0) / totalPendingSum) * 100 : 0;
+                  const pct = totalPendingNeto > 0 ? ((inv.honorariosTotal || 0) / totalPendingNeto) * 100 : 0;
                   return (
                     <tr key={inv.id} className="hover:bg-slate-50/50 transition-colors group">
                       <td className="px-6 py-4 font-bold text-slate-700 group-hover:text-emerald-600 transition-colors">
@@ -224,13 +219,13 @@ export default function PendientesPage() {
                       <td className="px-6 py-4 text-slate-600 font-medium">
                         {inv.generacionMes ? `${getMonthName(inv.generacionMes)} ${inv.generacionAnio || ''}` : 'N/A'}
                       </td>
-                      <td className="px-6 py-4 text-right font-semibold text-slate-600">
+                      <td className="px-6 py-4 text-right font-black text-slate-800">
                         {formatCurrency(inv.honorariosTotal)}
                       </td>
                       <td className="px-6 py-4 text-right font-medium text-slate-500 text-xs">
                         {formatCurrency(inv.ivaTotal)}
                       </td>
-                      <td className="px-6 py-4 text-right font-black text-emerald-700">
+                      <td className="px-6 py-4 text-right font-bold text-emerald-700">
                         {formatCurrency(inv.granTotal)}
                       </td>
                       <td className="px-6 py-4 text-right">
