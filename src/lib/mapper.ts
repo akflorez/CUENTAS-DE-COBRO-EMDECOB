@@ -13,6 +13,8 @@ export type RecordItem = {
   capital: number;
   intereses: number;
   honorarios: number;
+  honorariosBase?: number;
+  comisionExito?: number;
   iva: number;
   total: number;
   valorAdministracion: number;
@@ -39,6 +41,8 @@ export type MappedRecord = {
   capitalTotal: number;
   interesesTotal: number;
   honorariosTotal: number;
+  honorariosBaseTotal?: number;
+  comisionExitoTotal?: number;
   ivaTotal: number;
   granTotal: number;
 };
@@ -98,6 +102,8 @@ export function mapRawRecord(row: any) {
     conjuntoNombre: findCol(row, "CARTERA", "PORTAFOLIO", "CONJUNTO"),
     capital,
     intereses: parseNumber(findCol(row, "Abono Intereses", "INTERESES", "Abono Interes")),
+    rawHonorarios: parseNumber(findCol(row, "HONORARIOS", "HONORARIOS ", "GASTOS COBRANZAS")),
+    comisionExito: parseNumber(findCol(row, "Comisión Exito", "Comision Exito", "COMISION EXITO", "Comisión Éxito", "Comision de Exito", "COMISION DE EXITO")),
     honorarios: (() => {
       const rawHonorarios = parseNumber(findCol(row, "HONORARIOS", "HONORARIOS ", "GASTOS COBRANZAS"));
       const comisionExito = parseNumber(findCol(row, "Comisión Exito", "Comision Exito", "COMISION EXITO", "Comisión Éxito", "Comision de Exito", "COMISION DE EXITO"));
@@ -145,6 +151,8 @@ export function groupRecords(
       existing.capitalTotal += item.capital;
       existing.interesesTotal += item.intereses;
       existing.honorariosTotal += item.honorarios;
+      existing.honorariosBaseTotal = (existing.honorariosBaseTotal || 0) + (item.honorariosBase || 0);
+      existing.comisionExitoTotal = (existing.comisionExitoTotal || 0) + (item.comisionExito || 0);
       existing.ivaTotal += item.iva;
       existing.granTotal += item.honorarios + item.iva;
     } else {
@@ -173,6 +181,8 @@ export function groupRecords(
         capitalTotal: item.capital,
         interesesTotal: item.intereses,
         honorariosTotal: item.honorarios,
+        honorariosBaseTotal: item.honorariosBase || 0,
+        comisionExitoTotal: item.comisionExito || 0,
         ivaTotal: item.iva,
         granTotal: item.honorarios + item.iva
       });
@@ -207,6 +217,8 @@ export function groupRecords(
         capital: mapped.capital,
         intereses: mapped.intereses,
         honorarios: rawHonorarios,
+        honorariosBase: rawHonorarios,
+        comisionExito: 0,
         iva: rawIva,
         total: rawHonorarios + rawIva,
         valorAdministracion: mapped.valorAdministracion
@@ -223,6 +235,8 @@ export function groupRecords(
         capital: 0,
         intereses: 0,
         honorarios: comisionExito,
+        honorariosBase: 0,
+        comisionExito: comisionExito,
         iva: iva2,
         total: comisionExito + iva2,
         valorAdministracion: 0
@@ -230,6 +244,7 @@ export function groupRecords(
       addItemToGroup(exitoGroupKey, mapped, exitoItem, raw);
     } else {
       // Modo 'junto' (default) o no es Tole
+      const rawHonorarios = parseNumber(findCol(raw, "HONORARIOS", "HONORARIOS ", "GASTOS COBRANZAS"));
       const item: RecordItem = {
         fechaPago: mapped.fechaPago,
         fechaIngresoPorte: mapped.fechaIngreso,
@@ -238,6 +253,8 @@ export function groupRecords(
         capital: mapped.capital,
         intereses: mapped.intereses,
         honorarios: mapped.honorarios,
+        honorariosBase: isTole ? rawHonorarios : mapped.honorarios,
+        comisionExito: isTole ? comisionExito : 0,
         iva: mapped.iva,
         total: mapped.total,
         valorAdministracion: mapped.valorAdministracion

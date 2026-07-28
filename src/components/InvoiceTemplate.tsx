@@ -162,6 +162,15 @@ export const InvoiceTemplate = React.forwardRef<HTMLDivElement, Props>(({ data }
         </table>
       </div>
 
+      {Boolean(data.comisionExitoTotal && data.comisionExitoTotal > 0) && (
+        <div style={{ margin: '-6px 0 12px', padding: '8px 12px', backgroundColor: '#fef3c7', border: '1px solid #fde68a', borderRadius: '6px', fontSize: '9.5px', color: '#92400e', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 600 }}>
+          <span><strong>Desglose de Cobranza:</strong></span>
+          <span>Honorarios Base: <strong>{formatCurrency((data.honorariosBaseTotal ?? (data.honorariosTotal - data.comisionExitoTotal!)))}</strong></span>
+          <span>+ Comisión Éxito: <strong>{formatCurrency(data.comisionExitoTotal!)}</strong></span>
+          <span>= Total Honorarios: <strong>{formatCurrency(data.honorariosTotal)}</strong></span>
+        </div>
+      )}
+
       {/* ===== BLOQUE FINAL: TOTALES + PAGO + FIRMA ===== */}
       <div className="pdf-no-break" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
 
@@ -172,13 +181,30 @@ export const InvoiceTemplate = React.forwardRef<HTMLDivElement, Props>(({ data }
             <p style={{ margin: '1px 0 0', color: '#bbf7d0', fontSize: '9px' }}>Gastos de Cobranza + IVA</p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fff', padding: '10px 16px' }}>
-            <div style={{ display: 'flex', gap: '24px' }}>
+            <div style={{ display: 'flex', gap: '20px' }}>
+              {Boolean(data.comisionExitoTotal && data.comisionExitoTotal > 0) ? (
+                <>
+                  <div>
+                    <p style={{ margin: 0, color: '#64748b', fontSize: '9px' }}>Honorarios Base</p>
+                    <p style={{ margin: '2px 0 0', fontWeight: 700, fontSize: '12px', color: '#1e293b' }}>
+                      {formatCurrency(data.honorariosBaseTotal ?? (data.honorariosTotal - (data.comisionExitoTotal || 0)))}
+                    </p>
+                  </div>
+                  <div>
+                    <p style={{ margin: 0, color: '#d97706', fontSize: '9px', fontWeight: 700 }}>Comisión Éxito</p>
+                    <p style={{ margin: '2px 0 0', fontWeight: 800, fontSize: '12px', color: '#d97706' }}>
+                      {formatCurrency(data.comisionExitoTotal!)}
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <p style={{ margin: 0, color: '#64748b', fontSize: '9px' }}>Gastos de Cobranza</p>
+                  <p style={{ margin: '2px 0 0', fontWeight: 700, fontSize: '13px', color: '#1e293b' }}>{formatCurrency(data.honorariosTotal)}</p>
+                </div>
+              )}
               <div>
-                <p style={{ margin: 0, color: '#64748b', fontSize: '9px' }}>Gastos de Cobranza</p>
-                <p style={{ margin: '2px 0 0', fontWeight: 700, fontSize: '13px', color: '#1e293b' }}>{formatCurrency(data.honorariosTotal)}</p>
-              </div>
-              <div>
-                <p style={{ margin: 0, color: '#64748b', fontSize: '9px' }}>IVA</p>
+                <p style={{ margin: 0, color: '#64748b', fontSize: '9px' }}>IVA Total</p>
                 <p style={{ margin: '2px 0 0', fontWeight: 700, fontSize: '13px', color: '#1e293b' }}>{formatCurrency(data.ivaTotal)}</p>
               </div>
             </div>
