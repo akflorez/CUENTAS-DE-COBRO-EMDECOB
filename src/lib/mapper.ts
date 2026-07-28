@@ -98,8 +98,20 @@ export function mapRawRecord(row: any) {
     conjuntoNombre: findCol(row, "CARTERA", "PORTAFOLIO", "CONJUNTO"),
     capital,
     intereses: parseNumber(findCol(row, "Abono Intereses", "INTERESES", "Abono Interes")),
-    honorarios: parseNumber(findCol(row, "HONORARIOS", "HONORARIOS ", "GASTOS COBRANZAS")),
-    iva: parseNumber(findCol(row, "IVA", "IVA ")),
+    honorarios: (() => {
+      const rawHonorarios = parseNumber(findCol(row, "HONORARIOS", "HONORARIOS ", "GASTOS COBRANZAS"));
+      const comisionExito = parseNumber(findCol(row, "Comisión Exito", "Comision Exito", "COMISION EXITO", "Comisión Éxito", "Comision de Exito", "COMISION DE EXITO"));
+      const conjunto = String(findCol(row, "CARTERA", "PORTAFOLIO", "CONJUNTO")).trim().toUpperCase();
+      const isTole = conjunto.includes("TOLE") || conjunto.includes("DISTRIBUCIONES TOLE");
+      return isTole ? (rawHonorarios + comisionExito) : rawHonorarios;
+    })(),
+    iva: (() => {
+      const rawIva = parseNumber(findCol(row, "IVA", "IVA "));
+      const iva2 = parseNumber(findCol(row, "IVA2", "IVA 2", "IVA2 "));
+      const conjunto = String(findCol(row, "CARTERA", "PORTAFOLIO", "CONJUNTO")).trim().toUpperCase();
+      const isTole = conjunto.includes("TOLE") || conjunto.includes("DISTRIBUCIONES TOLE");
+      return isTole ? (rawIva + iva2) : rawIva;
+    })(),
     total: parseNumber(findCol(row, "TOTAL", "TOTAL ", "VALOR TOTAL", "TOTAL A PAGAR")),
     valorAdministracion,
     fechaPago: findCol(row, "Fecha ingreso dinero", "FECHA INGRESO DINERO", "FECHA INGRESO DEL DINERO", "FECHA INGRESO", "FECHA DE PAGO", "FECHA PAGO", "FECHA"),
