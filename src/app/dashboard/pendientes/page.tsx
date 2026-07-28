@@ -42,6 +42,13 @@ export default function PendientesPage() {
     return months[m - 1] || 'N/A';
   };
 
+  const getDaysInMora = (inv: any) => {
+    const elab = inv.fechaElaboracion ? new Date(inv.fechaElaboracion) : (inv.createdAt ? new Date(inv.createdAt) : null);
+    if (!elab) return 0;
+    const diffMs = new Date().getTime() - elab.getTime();
+    return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+  };
+
   // Calcular el Total Pendiente NETO (Suma de honorariosTotal sin IVA)
   const totalPendingNeto = useMemo(() => {
     return invoices.reduce((acc, inv) => acc + (inv.honorariosTotal || 0), 0);
@@ -54,6 +61,12 @@ export default function PendientesPage() {
     }
     if (sortKey === 'total_asc' || sortKey === 'pct_asc') {
       return list.sort((a, b) => (a.honorariosTotal || 0) - (b.honorariosTotal || 0));
+    }
+    if (sortKey === 'mora_desc') {
+      return list.sort((a, b) => getDaysInMora(b) - getDaysInMora(a));
+    }
+    if (sortKey === 'mora_asc') {
+      return list.sort((a, b) => getDaysInMora(a) - getDaysInMora(b));
     }
     if (sortKey === 'gestion') {
       return list.sort((a, b) => {
@@ -78,6 +91,8 @@ export default function PendientesPage() {
   const toggleSort = (key: string) => {
     if (key === 'total' || key === 'pct') {
       setSortKey(prev => prev === 'total_desc' ? 'total_asc' : 'total_desc');
+    } else if (key === 'mora') {
+      setSortKey(prev => prev === 'mora_desc' ? 'mora_asc' : 'mora_desc');
     } else if (key === 'gestion') {
       setSortKey(prev => prev === 'gestion' ? 'total_desc' : 'gestion');
     } else if (key === 'generacion') {
@@ -90,11 +105,13 @@ export default function PendientesPage() {
   const handleExportExcel = () => {
     const dataToExport = sortedInvoices.map((inv) => {
       const pct = totalPendingNeto > 0 ? ((inv.honorariosTotal || 0) / totalPendingNeto) * 100 : 0;
+      const moraDays = getDaysInMora(inv);
       return {
         "Consecutivo": inv.consecutivo,
         "Conjunto / Entidad": inv.conjuntoNombre,
         "Mes Gestión": inv.gestionMes ? `${getMonthName(inv.gestionMes)} ${inv.gestionAnio || ''}` : 'N/A',
         "Mes Generación": inv.generacionMes ? `${getMonthName(inv.generacionMes)} ${inv.generacionAnio || ''}` : 'N/A',
+        "Días de Mora": moraDays,
         "Valor Neto": inv.honorariosTotal,
         "IVA": inv.ivaTotal,
         "Total a Pagar": inv.granTotal,
@@ -125,7 +142,7 @@ export default function PendientesPage() {
               <div className="h-8 w-1.5 bg-amber-500 rounded-full"></div>
               <h1 className="text-2xl font-black text-slate-800 tracking-tight">Cuentas de Cobro Pendientes</h1>
             </div>
-            <p className="text-slate-500 text-sm mt-1">Listado detallado con porcentaje de participación sobre el total pendiente (Neto)</p>
+            <p className="text-slate-500 text-sm mt-1">Listado detallado con días de mora y % de participación sobre el total pendiente (Neto)</p>
           </div>
         </div>
         
@@ -136,6 +153,8 @@ export default function PendientesPage() {
             className="text-xs font-bold border border-slate-200 rounded-2xl px-4 py-3 outline-none focus:ring-2 focus:ring-emerald-500 bg-white text-slate-700 shadow-sm cursor-pointer"
           >
             <option value="total_desc">Ordenar: Mayor a Menor (Valor Neto)</option>
+            <option value="mora_desc">Ordenar: Mayor Días de Mora</option>
+            <option value="mora_asc">Ordenar: Menor Días de Mora</option>
             <option value="pct_desc">Ordenar: % Participación (Mayor a Menor)</option>
             <option value="total_asc">Ordenar: Menor a Mayor (Valor Neto)</option>
             <option value="gestion">Ordenar: Mes de Gestión</option>
@@ -214,6 +233,13 @@ export default function PendientesPage() {
                     Mes Generación {sortKey === 'generacion' && '↓'}
                   </th>
                   <th 
+                    onClick={() => toggleSort('mora')}
+                    className="px-6 py-4.5 text-center cursor-pointer hover:bg-slate-100 hover:text-slate-700 transition-colors whitespace-nowrap"
+                    title="Días transcurridos desde la fecha de emisión/elaboración"
+                  >
+                    Días de Mora {sortKey.includes('mora') && (sortKey === 'mora_desc' ? '↓' : '↑')}
+                  </th>
+                  <th 
                     onClick={() => toggleSort('total')}
                     className="px-6 py-4.5 text-right cursor-pointer hover:bg-slate-100 hover:text-slate-700 transition-colors"
                     title="Clic para ordenar por Valor Neto"
@@ -234,6 +260,7 @@ export default function PendientesPage() {
               <tbody className="divide-y divide-slate-100 text-[13px]">
                 {sortedInvoices.map((inv) => {
                   const pct = totalPendingNeto > 0 ? ((inv.honorariosTotal || 0) / totalPendingNeto) * 100 : 0;
+                  const moraDays = getDaysInMora(inv);
                   return (
                     <tr key={inv.id} className="hover:bg-slate-50/50 transition-colors group">
                       <td className="px-6 py-4 font-bold text-slate-700 group-hover:text-emerald-600 transition-colors">
@@ -250,6 +277,16 @@ export default function PendientesPage() {
                       </td>
                       <td className="px-6 py-4 text-slate-600 font-medium">
                         {inv.generacionMes ? `${getMonthName(inv.generacionMes)} ${inv.generacionAnio || ''}` : 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold ${
+                          moraDays > 60 ? 'bg-rose-50 text-rose-700 border border-rose-200' :
+                          moraDays > 30 ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                          'bg-slate-100 text-slate-700 border border-slate-200'
+                        }`}>
+                          <Clock className="w-3.5 h-3.5 opacity-70" />
+                          {moraDays}d
+                        </span>
                       </td>
                       <td className="px-6 py-4 text-right font-black text-slate-800">
                         {formatCurrency(inv.honorariosTotal)}
