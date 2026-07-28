@@ -5,38 +5,62 @@ import { MappedRecord } from '@/lib/mapper'
 import { revalidatePath } from 'next/cache'
 import { parseExcelDate } from '@/lib/utils'
 
+export async function getNextConsecutiveNumber() {
+  try {
+    const prisma = getPrisma();
+    const maxInv = await (prisma.invoice as any).findFirst({
+      orderBy: { consecutivo: 'desc' },
+      select: { consecutivo: true }
+    });
+
+    if (!maxInv || !maxInv.consecutivo) return 1;
+    const parts = maxInv.consecutivo.split('-');
+    const num = parseInt(parts[parts.length - 1]);
+    return isNaN(num) ? 1 : num + 1;
+  } catch (e) {
+    return 1;
+  }
+}
+
 export async function saveInvoiceRecord(data: MappedRecord) {
   console.log('--- saveInvoiceRecord called for:', data.consecutivo, '---');
   try {
     const prisma = getPrisma();
     
-    // Verify if it exists to avoid duplicates
-    const existing = await prisma.invoice.findUnique({
-      where: { consecutivo: data.consecutivo }
+    // 1. Detección Inteligente de Portafolio MIXTO
+    const conjuntoUpper = (data.conjuntoNombre || "").toUpperCase();
+    const isMixtoEntity = conjuntoUpper.includes("TOLE") || 
+                          conjuntoUpper.includes("SERFINANZA") || 
+                          conjuntoUpper.includes("RENTA EQUIPOS") || 
+                          conjuntoUpper.includes("JULIETA ALZATE") ||
+                          conjuntoUpper.includes("COMISIÓ") ||
+                          (data.portafolio || "").toUpperCase().includes("MIXTO");
+    
+    const finalPortafolio = isMixtoEntity ? "MIXTO" : (data.portafolio || "PROPIEDAD HORIZONTAL");
+
+    // 2. Consecutivo Auto-Healing (Garantizar Consecutivo Único Nunca Duplicado)
+    let finalConsecutivo = data.consecutivo;
+    let existing = await (prisma.invoice as any).findUnique({
+      where: { consecutivo: finalConsecutivo }
     });
 
     if (existing) {
-      // Si ya existe, actualizamos el mes de gestión si viene uno nuevo
-      if (data.gestionMes && data.gestionAnio) {
-        await prisma.invoice.update({
-          where: { consecutivo: data.consecutivo },
-          data: { gestionMes: data.gestionMes, gestionAnio: data.gestionAnio }
-        });
-        return JSON.parse(JSON.stringify({ success: true, updated: true, message: 'Gestión actualizada' }));
-      }
-      return JSON.parse(JSON.stringify({ success: false, error: 'Invoice already exists' }));
+      // Si el consecutivo ya existe, generamos automáticamente el siguiente consecutivo libre
+      const nextNum = await getNextConsecutiveNumber();
+      const year = new Date().getFullYear();
+      finalConsecutivo = `${year}-${String(nextNum).padStart(4, '0')}`;
     }
 
     const fElab = parseExcelDate(data.items[0]?.fechaElaboracion) || new Date();
     const genMes = fElab.getMonth() + 1;
     const genAnio = fElab.getFullYear();
 
-    const invoice = await prisma.invoice.create({
+    const invoice = await (prisma.invoice as any).create({
       data: {
-        consecutivo: data.consecutivo,
+        consecutivo: finalConsecutivo,
         conjuntoNombre: data.conjuntoNombre,
         asesor: data.asesor,
-        portafolio: data.portafolio || "PROPIEDAD HORIZONTAL",
+        portafolio: finalPortafolio,
         estadoCobro: data.estadoCobro,
         capitalTotal: data.capitalTotal,
         interesesTotal: data.interesesTotal,
@@ -66,11 +90,10 @@ export async function saveInvoiceRecord(data: MappedRecord) {
       }
     });
 
-    const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-    await sleep(200); 
-
     try {
       revalidatePath('/dashboard/gestion');
+      revalidatePath('/dashboard');
+      revalidatePath('/dashboard/pendientes');
     } catch (e) { console.warn('revalidatePath error:', e); }
 
     return JSON.parse(JSON.stringify({ success: true, invoice }));
@@ -120,10 +143,15 @@ export async function getInvoices(
     }
 
     // Autocorrección: Asignar portafolio MIXTO a entidades mixtas conocidas si están en PH
-    const mixtoEntities = ["DISTRIBUCIONES TOLE", "SERFINANZA", "JULIETA ALZATE OSORIO", "RENTA EQUIPOS"];
-    await prisma.invoice.updateMany({
+    await (prisma.invoice as any).updateMany({
       where: {
-        conjuntoNombre: { in: mixtoEntities },
+        OR: [
+          { conjuntoNombre: { contains: "TOLE", mode: "insensitive" } },
+          { conjuntoNombre: { contains: "SERFINANZA", mode: "insensitive" } },
+          { conjuntoNombre: { contains: "RENTA EQUIPOS", mode: "insensitive" } },
+          { conjuntoNombre: { contains: "JULIETA", mode: "insensitive" } },
+          { conjuntoNombre: { contains: "COMISIÓ", mode: "insensitive" } }
+        ],
         portafolio: "PROPIEDAD HORIZONTAL"
       },
       data: {
@@ -351,10 +379,15 @@ export async function getInvoiceStats(startDate?: Date | null, endDate?: Date | 
   try {
     const prisma = getPrisma();
     // Autocorrección: Asignar portafolio MIXTO a entidades mixtas conocidas si están en PH
-    const mixtoEntities = ["DISTRIBUCIONES TOLE", "SERFINANZA", "JULIETA ALZATE OSORIO", "RENTA EQUIPOS"];
-    await prisma.invoice.updateMany({
+    await (prisma.invoice as any).updateMany({
       where: {
-        conjuntoNombre: { in: mixtoEntities },
+        OR: [
+          { conjuntoNombre: { contains: "TOLE", mode: "insensitive" } },
+          { conjuntoNombre: { contains: "SERFINANZA", mode: "insensitive" } },
+          { conjuntoNombre: { contains: "RENTA EQUIPOS", mode: "insensitive" } },
+          { conjuntoNombre: { contains: "JULIETA", mode: "insensitive" } },
+          { conjuntoNombre: { contains: "COMISIÓ", mode: "insensitive" } }
+        ],
         portafolio: "PROPIEDAD HORIZONTAL"
       },
       data: {
