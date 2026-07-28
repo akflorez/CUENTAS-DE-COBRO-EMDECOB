@@ -167,16 +167,27 @@ export function groupRecords(
         }
       }
 
+      const isMixto = (mapped.portafolio || "").toUpperCase().includes("MIXTO") ||
+                      groupKey.toUpperCase().includes("TOLE") ||
+                      groupKey.toUpperCase().includes("SERFINANZA") ||
+                      groupKey.toUpperCase().includes("RENTA EQUIPOS") ||
+                      groupKey.toUpperCase().includes("JULIETA") ||
+                      groupKey.toUpperCase().includes("COMISIÓ");
+
+      const prefix = isMixto ? "PM-" : "";
+      const year = new Date().getFullYear();
+      const formattedConsecutivo = `${prefix}${year}-${String(consecutivoCounter).padStart(4, '0')}`;
+
       grouped.set(groupKey, {
         nombre: mapped.nombre,
         cedula: mapped.cedula,
         conjuntoNombre: groupKey,
         asesor: mapped.asesor,
-        portafolio: mapped.portafolio,
+        portafolio: isMixto ? "MIXTO" : mapped.portafolio,
         estadoCobro: mapped.estadoCobro,
         gestionMes: gMes,
         gestionAnio: gAnio,
-        consecutivo: String(new Date().getFullYear()) + "-" + String(consecutivoCounter).padStart(4, '0'),
+        consecutivo: formattedConsecutivo,
         items: [item],
         capitalTotal: item.capital,
         interesesTotal: item.intereses,

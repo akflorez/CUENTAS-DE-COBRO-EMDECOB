@@ -5,10 +5,20 @@ import { MappedRecord } from '@/lib/mapper'
 import { revalidatePath } from 'next/cache'
 import { parseExcelDate } from '@/lib/utils'
 
-export async function getNextConsecutiveNumber() {
+export async function getNextConsecutiveNumber(portafolio?: string) {
   try {
     const prisma = getPrisma();
+    const isMixto = portafolio && portafolio.toUpperCase().includes("MIXTO");
+
+    const where: any = {};
+    if (isMixto) {
+      where.consecutivo = { startsWith: 'PM-' };
+    } else {
+      where.NOT = { consecutivo: { startsWith: 'PM-' } };
+    }
+
     const maxInv = await (prisma.invoice as any).findFirst({
+      where,
       orderBy: { consecutivo: 'desc' },
       select: { consecutivo: true }
     });
@@ -37,18 +47,24 @@ export async function saveInvoiceRecord(data: MappedRecord) {
                           (data.portafolio || "").toUpperCase().includes("MIXTO");
     
     const finalPortafolio = isMixtoEntity ? "MIXTO" : (data.portafolio || "PROPIEDAD HORIZONTAL");
+    const isMixto = finalPortafolio === "MIXTO";
 
-    // 2. Consecutivo Auto-Healing (Garantizar Consecutivo Único Nunca Duplicado)
+    // 2. Consecutivo Auto-Healing con prefijo PM- para Mixto
     let finalConsecutivo = data.consecutivo;
+    if (isMixto && !finalConsecutivo.startsWith("PM-")) {
+      finalConsecutivo = `PM-${finalConsecutivo}`;
+    }
+
     let existing = await (prisma.invoice as any).findUnique({
       where: { consecutivo: finalConsecutivo }
     });
 
     if (existing) {
-      // Si el consecutivo ya existe, generamos automáticamente el siguiente consecutivo libre
-      const nextNum = await getNextConsecutiveNumber();
+      // Si el consecutivo ya existe, generamos automáticamente el siguiente consecutivo libre del portafolio
+      const nextNum = await getNextConsecutiveNumber(finalPortafolio);
       const year = new Date().getFullYear();
-      finalConsecutivo = `${year}-${String(nextNum).padStart(4, '0')}`;
+      const prefix = isMixto ? "PM-" : "";
+      finalConsecutivo = `${prefix}${year}-${String(nextNum).padStart(4, '0')}`;
     }
 
     const fElab = parseExcelDate(data.items[0]?.fechaElaboracion) || new Date();
