@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ['@prisma/client', 'canvas', 'jimp', 'jspdf', 'xlsx']
+  output: "standalone",
+  serverExternalPackages: ['@prisma/client', 'jimp', 'jspdf', 'xlsx']
 };
 
 export default nextConfig;
