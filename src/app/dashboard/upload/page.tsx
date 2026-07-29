@@ -10,7 +10,7 @@ import { UploadCloud, FileSpreadsheet, ArrowRight, AlertCircle, X, PlusCircle, S
 
 export default function UploadPage() {
   const router = useRouter();
-  const { filesData, setFilesData, startingConsecutive, setStartingConsecutive, excelData, comisionExitoMode, setComisionExitoMode } = useAppContext();
+  const { filesData, setFilesData, startingConsecutive, setStartingConsecutive, excelData } = useAppContext();
   
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,14 +20,6 @@ export default function UploadPage() {
   const [fileDate, setFileDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [gestionMonth, setGestionMonth] = useState<number>(new Date().getMonth()); // 0-indexed for JS but we'll show 1-12
   const [gestionYear, setGestionYear] = useState<number>(new Date().getFullYear());
-
-  const hasToleData = React.useMemo(() => {
-    if (!excelData) return false;
-    return excelData.some(r => {
-      const c = String(r['CARTERA'] || r['PORTAFOLIO'] || r['CONJUNTO'] || '').toUpperCase();
-      return c.includes('TOLE');
-    });
-  }, [excelData]);
 
   const processFile = (file: File) => {
     if (!file.name.match(/\.(xlsx|xls|csv)$/)) {
@@ -126,22 +118,21 @@ export default function UploadPage() {
     setError(null);
     
     try {
-      const mappedInvoices = groupRecords(excelData, startingConsecutive, { comisionExitoMode });
+      const mappedInvoices = groupRecords(excelData, startingConsecutive);
       
       setSaveProgress({ current: 0, total: mappedInvoices.length });
       
       let count = 0;
       for (const inv of mappedInvoices) {
         const res = await saveInvoiceRecord(inv);
-        if (res.success) {
-          count++;
-        } else {
+        if (!res.success) {
           console.error(`Error guardando ${inv.consecutivo}:`, res.error);
         }
+        count++;
         setSaveProgress({ current: count, total: mappedInvoices.length });
       }
 
-      alert(`Se han guardado ${count} cuentas de cobro exitosamente en la Base de Datos.`);
+      alert(`Se han guardado ${count} cuentas de cobro exitosamente.`);
       router.push("/dashboard/gestion");
     } catch (err: any) {
       setError("Error al guardar en el dashboard: " + err.message);
@@ -316,38 +307,6 @@ export default function UploadPage() {
                   />
                </div>
             </div>
-
-            {hasToleData && (
-              <div className="bg-amber-50/90 border border-amber-200 rounded-2xl p-4 mt-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in duration-300">
-                <div>
-                  <span className="text-xs font-black uppercase text-amber-900 tracking-wider flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
-                    Opción de Facturación: Comisión de Éxito (Distribuciones Tole)
-                  </span>
-                  <p className="text-xs text-amber-700 mt-0.5">
-                    Decide cómo deseas emitir la comisión de éxito en las cuentas de cobro generadas.
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-amber-200 shadow-2xs self-start sm:self-auto">
-                  <button
-                    onClick={() => setComisionExitoMode('junto')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      comisionExitoMode === 'junto' ? 'bg-amber-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    Facturar Todo Junto
-                  </button>
-                  <button
-                    onClick={() => setComisionExitoMode('separado')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      comisionExitoMode === 'separado' ? 'bg-amber-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    Facturar Comisión Aparte
-                  </button>
-                </div>
-              </div>
-            )}
 
             {/* BOTONES DE ACCIÓN */}
             <div className="flex flex-col md:flex-row gap-4 pt-4 mt-8">
