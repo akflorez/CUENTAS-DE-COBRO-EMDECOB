@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { FileText, LayoutDashboard, LogOut, FileUp, Eye, ChevronRight, ChevronLeft, Send, ListChecks } from "lucide-react";
@@ -12,6 +12,23 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [headerTitle, setHeaderTitle] = useState("Panel de Administración General - EMDECOB");
+  const [currentUserLabel, setCurrentUserLabel] = useState("Propiedad Horizontal");
+
+  React.useEffect(() => {
+    const user = (localStorage.getItem('currentUser') || 'Propiedad Horizontal');
+    const portafolio = (localStorage.getItem('userPortafolio') || '');
+    setCurrentUserLabel(user);
+
+    const userUpper = user.toUpperCase();
+    if (userUpper === 'EMDECOB' || userUpper === 'TESORERIA') {
+      setHeaderTitle("Panel de Administración General - EMDECOB (PH + MIXTO)");
+    } else if (portafolio.toUpperCase().includes('MIXTO') || userUpper.includes('MIXTO')) {
+      setHeaderTitle("Panel de Cuentas de Cobro - Portafolio Mixto");
+    } else {
+      setHeaderTitle("Panel de Cuentas de Cobro - Propiedad Horizontal");
+    }
+  }, [pathname]);
 
   const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -115,22 +132,21 @@ export default function DashboardLayout({
           </div>
           <div className="hidden sm:flex items-center gap-2">
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <h1 className="text-slate-700 font-medium text-sm">Panel de Generación de Cuentas de Cobro Propiedad Horizontal</h1>
+            <h1 className="text-slate-700 font-bold text-sm tracking-tight">{headerTitle}</h1>
           </div>
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-100">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-100 shadow-2xs">
               <div className="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white font-bold text-xs flex items-center justify-center shadow-sm uppercase">
                 {(() => {
-                  const user = (typeof window !== 'undefined' ? localStorage.getItem('currentUser') : null) || 'PH';
-                  const parts = user.trim().split(/\s+/);
+                  const parts = currentUserLabel.trim().split(/\s+/);
                   if (parts.length >= 2) {
                     return (parts[0][0] + parts[1][0]).toUpperCase();
                   }
-                  return user.substring(0, 2).toUpperCase();
+                  return currentUserLabel.substring(0, 2).toUpperCase();
                 })()}
               </div>
               <span className="text-xs font-semibold text-emerald-800 hidden sm:block capitalize">
-                {(typeof window !== 'undefined' ? localStorage.getItem('currentUser') || 'Propiedad Horizontal' : 'Propiedad Horizontal').toLowerCase()}
+                {currentUserLabel.toLowerCase()}
               </span>
             </div>
           </div>
