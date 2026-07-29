@@ -241,7 +241,7 @@ export default function DashboardIndex() {
             </div>
 
             <Link 
-              href="/dashboard/pendientes"
+              href={`/dashboard/pendientes?portafolio=${encodeURIComponent(dbPortafolio)}`}
               className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex items-center group hover:border-amber-400 hover:shadow-md transition-all cursor-pointer"
             >
               <div className="p-4 bg-amber-50 text-amber-600 rounded-2xl mr-5 group-hover:scale-110 transition-transform">

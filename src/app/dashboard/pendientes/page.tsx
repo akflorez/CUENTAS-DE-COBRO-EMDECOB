@@ -1,36 +1,56 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import React, { useEffect, useState, useMemo, useCallback, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { getPendingInvoices } from "@/app/actions/invoice";
 import { ArrowLeft, Clock, Building2, ListChecks, Percent, FileSpreadsheet } from "lucide-react";
 import * as XLSX from "xlsx";
 
-export default function PendientesPage() {
+function PendientesContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlPortafolio = searchParams.get('portafolio') || 'Todos';
+
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<string>("total_desc"); // Default: Mayor a Menor
+  const [dbPortafolio, setDbPortafolio] = useState<string>(urlPortafolio);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    async function load() {
-      try {
-        const userPortafolio = localStorage.getItem('userPortafolio') || 'Todos';
-        const res = await getPendingInvoices(userPortafolio);
-        if (res.success) {
-          setInvoices(res.invoices || []);
-        } else {
-          setError(res.error || "Error al cargar las cuentas pendientes.");
-        }
-      } catch (err: any) {
-        setError(err.message || "Fallo de conexión.");
-      } finally {
-        setLoading(false);
+    if (typeof window !== 'undefined') {
+      const user = localStorage.getItem('currentUser') || '';
+      const userPortafolio = localStorage.getItem('userPortafolio') || 'Todos';
+      const esAdmin = user === 'EMDECOB' || user === 'TESORERIA';
+      setIsAdmin(esAdmin);
+
+      if (!esAdmin && userPortafolio !== 'Todos') {
+        setDbPortafolio(userPortafolio);
       }
     }
-    load();
   }, []);
+
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await getPendingInvoices(dbPortafolio);
+      if (res.success) {
+        setInvoices(res.invoices || []);
+      } else {
+        setError(res.error || "Error al cargar las cuentas pendientes.");
+      }
+    } catch (err: any) {
+      setError(err.message || "Fallo de conexión.");
+    } finally {
+      setLoading(false);
+    }
+  }, [dbPortafolio]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val);
@@ -147,6 +167,18 @@ export default function PendientesPage() {
         </div>
         
         <div className="flex flex-wrap items-center gap-3">
+          {isAdmin && (
+            <select
+              value={dbPortafolio}
+              onChange={(e) => setDbPortafolio(e.target.value)}
+              className="text-xs font-bold border border-slate-200 rounded-2xl px-4 py-3 outline-none focus:ring-2 focus:ring-emerald-500 bg-white text-slate-700 shadow-sm cursor-pointer"
+            >
+              <option value="Todos">Suma Todos los Portafolios (PH + Mixto)</option>
+              <option value="PROPIEDAD HORIZONTAL">Propiedad Horizontal (PH)</option>
+              <option value="MIXTO">Portafolio Mixto (PM)</option>
+            </select>
+          )}
+
           <select
             value={sortKey}
             onChange={(e) => setSortKey(e.target.value)}
@@ -312,5 +344,18 @@ export default function PendientesPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function PendientesPage() {
+  return (
+    <Suspense fallback={
+      <div className="p-20 flex flex-col justify-center items-center text-slate-500 gap-4">
+        <div className="w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+        <span className="text-sm font-semibold">Cargando módulo de pendientes...</span>
+      </div>
+    }>
+      <PendientesContent />
+    </Suspense>
   );
 }
