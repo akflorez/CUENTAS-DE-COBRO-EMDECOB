@@ -69,18 +69,26 @@ function PendientesContent() {
     return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
   };
 
-  // Calcular el Total Pendiente NETO (Suma de honorariosTotal sin IVA)
+  const getNetPendingFee = (inv: any) => {
+    const honorarios = inv.honorariosTotal || 0;
+    const granTotal = inv.granTotal || 0;
+    const feesRatio = granTotal > 0 ? (honorarios / granTotal) : 1;
+    const feesPaid = (inv.montoPagado || 0) * feesRatio;
+    return Math.max(0, honorarios - feesPaid);
+  };
+
+  // Calcular el Total Pendiente NETO (Suma de saldo de honorarios sin IVA restando abonos)
   const totalPendingNeto = useMemo(() => {
-    return invoices.reduce((acc, inv) => acc + (inv.honorariosTotal || 0), 0);
+    return invoices.reduce((acc, inv) => acc + getNetPendingFee(inv), 0);
   }, [invoices]);
 
   const sortedInvoices = useMemo(() => {
     const list = [...invoices];
     if (sortKey === 'total_desc' || sortKey === 'pct_desc') {
-      return list.sort((a, b) => (b.honorariosTotal || 0) - (a.honorariosTotal || 0));
+      return list.sort((a, b) => getNetPendingFee(b) - getNetPendingFee(a));
     }
     if (sortKey === 'total_asc' || sortKey === 'pct_asc') {
-      return list.sort((a, b) => (a.honorariosTotal || 0) - (b.honorariosTotal || 0));
+      return list.sort((a, b) => getNetPendingFee(a) - getNetPendingFee(b));
     }
     if (sortKey === 'mora_desc') {
       return list.sort((a, b) => getDaysInMora(b) - getDaysInMora(a));
@@ -291,7 +299,8 @@ function PendientesContent() {
               </thead>
               <tbody className="divide-y divide-slate-100 text-[13px]">
                 {sortedInvoices.map((inv) => {
-                  const pct = totalPendingNeto > 0 ? ((inv.honorariosTotal || 0) / totalPendingNeto) * 100 : 0;
+                  const netFee = getNetPendingFee(inv);
+                  const pct = totalPendingNeto > 0 ? (netFee / totalPendingNeto) * 100 : 0;
                   const moraDays = getDaysInMora(inv);
                   return (
                     <tr key={inv.id} className="hover:bg-slate-50/50 transition-colors group">
@@ -321,7 +330,7 @@ function PendientesContent() {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right font-black text-slate-800">
-                        {formatCurrency(inv.honorariosTotal)}
+                        {formatCurrency(netFee)}
                       </td>
                       <td className="px-6 py-4 text-right font-medium text-slate-500 text-xs">
                         {formatCurrency(inv.ivaTotal)}
