@@ -6,10 +6,57 @@ import { useAppContext } from "@/context/AppContext";
 import { useDropzone } from "react-dropzone";
 import * as XLSX from "xlsx";
 import { UploadCloud, CheckCircle2, FileSpreadsheet, FileWarning, Send, Mail, Settings, Lock, CalendarDays } from "lucide-react";
-import { validateRecord, groupRecords } from "@/lib/mapper";
+import { validateRecord, groupRecords, MappedRecord } from "@/lib/mapper";
 import { getPdfBlob } from "@/lib/pdfGenerator";
 import { InvoiceTemplate } from "@/components/InvoiceTemplate";
 import { cn } from "@/lib/utils";
+import { getInvoicesForResend } from "@/app/actions/invoice";
+
+function dbInvoiceToMappedRecord(dbInv: any): MappedRecord {
+  return {
+    consecutivo: dbInv.consecutivo,
+    conjuntoNombre: dbInv.conjuntoNombre,
+    nombre: dbInv.conjuntoNombre,
+    cedula: "",
+    asesor: dbInv.asesor || "EMDECOB S.A.S",
+    portafolio: dbInv.portafolio || "PROPIEDAD HORIZONTAL",
+    estadoCobro: dbInv.estadoCobro || "PENDIENTE",
+    gestionMes: dbInv.gestionMes || dbInv.generacionMes || 0,
+    gestionAnio: dbInv.gestionAnio || dbInv.generacionAnio || 0,
+    capitalTotal: dbInv.capitalTotal || 0,
+    interesesTotal: dbInv.interesesTotal || 0,
+    honorariosTotal: dbInv.honorariosTotal || 0,
+    honorariosBaseTotal: dbInv.honorariosTotal || 0,
+    comisionExitoTotal: 0,
+    ivaTotal: dbInv.ivaTotal || 0,
+    granTotal: dbInv.granTotal || 0,
+    items: (dbInv.items && dbInv.items.length > 0) ? dbInv.items.map((it: any) => ({
+      fechaPago: it.fechaPago || "",
+      fechaIngresoPorte: it.fechaIngresoPorte || "",
+      fechaElaboracion: it.fechaElaboracion || (dbInv.fechaElaboracion ? new Date(dbInv.fechaElaboracion).toISOString().split('T')[0] : ""),
+      predio: it.predio || "",
+      capital: it.capital || 0,
+      intereses: it.intereses || 0,
+      honorarios: it.honorarios || 0,
+      honorariosBase: it.honorarios || 0,
+      comisionExito: 0,
+      iva: it.iva || 0,
+      total: it.total || 0
+    })) : [{
+      fechaPago: "",
+      fechaIngresoPorte: "",
+      fechaElaboracion: dbInv.fechaElaboracion ? new Date(dbInv.fechaElaboracion).toISOString().split('T')[0] : "",
+      predio: dbInv.conjuntoNombre,
+      capital: dbInv.capitalTotal || 0,
+      intereses: dbInv.interesesTotal || 0,
+      honorarios: dbInv.honorariosTotal || 0,
+      honorariosBase: dbInv.honorariosTotal || 0,
+      comisionExito: 0,
+      iva: dbInv.ivaTotal || 0,
+      total: dbInv.granTotal || 0
+    }]
+  };
+}
 
 // Componente para la UI principal
 export default function EmailingPage() {
@@ -26,6 +73,14 @@ export default function EmailingPage() {
   const [envioGestionMes, setEnvioGestionMes] = useState(new Date().getMonth() + 1);
   const [envioGestionAnio, setEnvioGestionAnio] = useState(new Date().getFullYear());
   const [envioFechaEmision, setEnvioFechaEmision] = useState(new Date().toISOString().split('T')[0]);
+
+  // Modo de envío: 'current' (Excel en sesión) vs 'database' (Reenvío por Mes de Generación)
+  const [activeTab, setActiveTab] = useState<'current' | 'database'>('database');
+  const [dbGeneracionMes, setDbGeneracionMes] = useState<number>(new Date().getMonth() + 1);
+  const [dbGeneracionAnio, setDbGeneracionAnio] = useState<number>(new Date().getFullYear());
+  const [dbPortafolio, setDbPortafolio] = useState<string>('Todos');
+  const [dbInvoices, setDbInvoices] = useState<any[]>([]);
+  const [loadingDb, setLoadingDb] = useState(false);
 
   // Cargar credenciales guardadas al montar
   React.useEffect(() => {
@@ -142,12 +197,60 @@ export default function EmailingPage() {
     maxFiles: 1
   });
 
-  const readyToSend = emailMapping.filter(em => em.associatedEmail !== null);
+  // Callback to load DB invoices by Generacion Mes & Anio & Portafolio
+  const loadDbInvoices = useCallback(async () => {
+    setLoadingDb(true);
+    try {
+      const res = await getInvoicesForResend(dbGeneracionMes, dbGeneracionAnio, dbPortafolio);
+      if (res.success) {
+        setDbInvoices(res.invoices || []);
+      } else {
+        setDbInvoices([]);
+      }
+    } catch (e) {
+      console.error(e);
+      setDbInvoices([]);
+    } finally {
+      setLoadingDb(false);
+    }
+  }, [dbGeneracionMes, dbGeneracionAnio, dbPortafolio]);
+
+  React.useEffect(() => {
+    if (activeTab === 'database') {
+      loadDbInvoices();
+    }
+  }, [activeTab, loadDbInvoices]);
+
+  const emailMappingDb = useMemo(() => {
+    return dbInvoices.map((dbInv) => {
+      const mapped = dbInvoiceToMappedRecord(dbInv);
+      const cleanConjunto = (mapped.conjuntoNombre || "").toLowerCase().trim();
+      const invoiceNit = String(mapped.cedula || "").trim();
+      
+      const targetDir = directoryData.find(dir => {
+         const pName = String(dir.CONJUNTO || dir.NOMBRE || dir.ENTIDAD || "").toLowerCase().trim();
+         const pNit = String(dir.NIT || dir.CEDULA || "").trim();
+         
+         const nameMatch = pName && cleanConjunto && (cleanConjunto.includes(pName) || pName.includes(cleanConjunto));
+         const nitMatch = pNit && invoiceNit && pNit === invoiceNit;
+         return nameMatch || nitMatch;
+      });
+
+      return {
+        invoice: { mapped, isValid: true },
+        associatedEmail: targetDir?.CORREO || targetDir?.EMAIL || targetDir?.correo || targetDir?.Email || null,
+        directoryRecord: targetDir || null
+      };
+    });
+  }, [dbInvoices, directoryData]);
+
+  const effectiveEmailMapping = activeTab === 'database' ? emailMappingDb : emailMapping;
+  const readyToSend = effectiveEmailMapping.filter(em => em.associatedEmail !== null);
 
   const handleSimulateEmails = async () => {
     if (readyToSend.length === 0) return;
     if (!smtpUser || !smtpPass) {
-        setSmtpError("Por favor ingresa el correo emitente y la contraseña de aplicación.");
+        setSmtpError("Por favor ingresa el correo remitente y la contraseña de aplicación.");
         return;
     }
     
@@ -180,29 +283,27 @@ export default function EmailingPage() {
             if (!res.ok) {
                 const result = await res.json();
                 console.error("Error en envío:", result.error);
-                // Si la credencial falla por completo, tal vez queramos detener el bucle
-                if (res.status === 500 && String(result.error).includes("auth") || String(result.error).includes("SMTP")) {
-                    setSmtpError("Tus credenciales SMTP fueron rechazadas por Gmail/Servidor.");
+                if (res.status === 500 && (String(result.error).includes("auth") || String(result.error).includes("SMTP") || String(result.error).includes("credentials"))) {
+                    setSmtpError(`Rechazado por el servidor de correo: ${result.error}`);
                     setSendingState(prev => ({ ...prev, isActive: false }));
                     return;
                 }
             } else {
-                // Guardar en la base de datos
-                const { saveInvoiceRecord } = await import("@/app/actions/invoice");
-                const recordWithGestion = {
-                  ...match.invoice.mapped,
-                  gestionMes: envioGestionMes,
-                  gestionAnio: envioGestionAnio,
-                  // Si se especificó una fecha de emisión manual, la inyectamos en el primer item (que usa la DB)
-                  items: match.invoice.mapped.items.map((item: any, idx: number) => ({
-                    ...item,
-                    fechaElaboracion: idx === 0 ? envioFechaEmision : item.fechaElaboracion
-                  }))
-                };
-                await saveInvoiceRecord(recordWithGestion);
+                if (activeTab === 'current') {
+                  const { saveInvoiceRecord } = await import("@/app/actions/invoice");
+                  const recordWithGestion = {
+                    ...match.invoice.mapped,
+                    gestionMes: envioGestionMes,
+                    gestionAnio: envioGestionAnio,
+                    items: match.invoice.mapped.items.map((item: any, idx: number) => ({
+                      ...item,
+                      fechaElaboracion: idx === 0 ? envioFechaEmision : item.fechaElaboracion
+                    }))
+                  };
+                  await saveInvoiceRecord(recordWithGestion);
+                }
             }
             
-            // Pausa de cortesía para no colapsar la memoria del cliente ni ser bloqueado por Spam limits
             await new Promise(r => setTimeout(r, 600));
 
         } catch (e) {
@@ -227,256 +328,392 @@ export default function EmailingPage() {
 
   return (
     <div className="max-w-6xl mx-auto pb-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-slate-800 tracking-tight">Envío Masivo de Cuentas</h1>
-        <p className="text-slate-500 mt-2 flex items-center">
-          <Send className="w-4 h-4 mr-2" />
-          Modulo automático de vinculación de correos
-        </p>
+      <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-800 tracking-tight">Envío Masivo de Cuentas</h1>
+          <p className="text-slate-500 mt-1 flex items-center text-sm">
+            <Send className="w-4 h-4 mr-2 text-emerald-600" />
+            Módulo de cruce de correos y envío de cuentas de cobro con adjunto PDF
+          </p>
+        </div>
+
+        {/* PESTAÑAS DE MODO DE ENVÍO */}
+        <div className="flex items-center gap-2 bg-slate-200/70 p-1.5 rounded-2xl self-start md:self-auto border border-slate-300/50 shadow-2xs">
+          <button
+            onClick={() => setActiveTab('database')}
+            className={cn(
+              "px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2",
+              activeTab === 'database'
+                ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20"
+                : "text-slate-600 hover:text-slate-900 hover:bg-white/50"
+            )}
+          >
+            <CalendarDays className="w-4 h-4" />
+            <span>Reenviar por Mes de Generación (DB)</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('current')}
+            className={cn(
+              "px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2",
+              activeTab === 'current'
+                ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20"
+                : "text-slate-600 hover:text-slate-900 hover:bg-white/50"
+            )}
+          >
+            <UploadCloud className="w-4 h-4" />
+            <span>Carga Actual (Excel)</span>
+          </button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
-        {/* LADO IZQUIERDO: CARGUE DEL DIRECTORIO */}
-        <div className="lg:col-span-5 flex flex-col gap-6">
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-             <h3 className="font-bold text-slate-800 mb-2">1. Directorio de Correos (Excel)</h3>
-             <p className="text-sm text-slate-500 mb-6">
-                Sube un Excel que tenga las columnas <strong className="text-slate-700">CONJUNTO</strong> o <strong className="text-slate-700">NIT</strong>, 
-                y una columna llamada <strong className="text-slate-700">CORREO</strong> para cruzar la base de datos automáticamente.
-             </p>
-
-             <div 
-                {...getRootProps()} 
-                className={cn(
-                  "border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-300 relative overflow-hidden group",
-                  isDragActive ? "border-emerald-500 bg-emerald-50" : "border-slate-300 hover:border-emerald-400 hover:bg-emerald-50/30",
-                  directoryData.length > 0 && "border-emerald-500 bg-emerald-50"
-                )}
-              >
-                <input {...getInputProps()} />
-                
-                {directoryData.length > 0 ? (
-                  <div className="flex flex-col items-center">
-                    <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-4 shadow-inner">
-                      <CheckCircle2 className="w-8 h-8" />
-                    </div>
-                    <h3 className="text-xl font-bold text-slate-800 mb-1">Directorio Cargado</h3>
-                    <p className="text-emerald-600 font-medium mb-1">{directoryData.length} registros encontrados</p>
-                    <p className="text-xs text-slate-400 mt-4 underline decoration-dashed">Haz clic para reemplazar archivo</p>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center">
-                    <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm">
-                      <UploadCloud className="w-8 h-8" />
-                    </div>
-                    <h3 className="text-lg font-bold text-slate-800 mb-2">
-                       {isDragActive ? "Suelta el Excel aquí..." : "Arrastra el Directorio Excel"}
-                    </h3>
-                    <p className="text-sm text-slate-500 max-w-[250px] mx-auto">
-                       Soporta archivos .xlsx o .xls
-                    </p>
-                  </div>
-                )}
-                
-                {isProcessing && (
-                  <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
-                  </div>
-                )}
-              </div>
-              
-              {errorInfo && (
-                <div className="mt-4 p-4 bg-red-50 rounded-lg border border-red-200 text-sm text-red-700 flex items-start">
-                  <FileWarning className="w-5 h-5 mr-2 shrink-0" />
-                  <p>{errorInfo}</p>
-                </div>
-              )}
-          </div>
-
-          <div className="bg-emerald-50 rounded-xl shadow-sm border border-emerald-200 p-6 flex flex-col justify-center">
-              <p className="text-sm font-medium text-emerald-800 mb-2 leading-relaxed">
-                  El sistema cuenta con <strong>{validInvoices.length} recibos de cobro validados</strong>. 
-                  Una vez subas el directorio de contactos con sus respectivos correos, la plataforma generará el PDF y emparejará el documento.
+      {/* BANNER REENVÍO BASE DE DATOS */}
+      {activeTab === 'database' && (
+        <div className="bg-white rounded-2xl border border-emerald-200 p-5 mb-8 shadow-sm animate-in fade-in duration-300">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <span className="text-xs font-black text-emerald-700 uppercase tracking-wider flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                Selecciona el Mes de Generación a Reenviar
+              </span>
+              <p className="text-xs text-slate-500 mt-1">
+                Consulta y reenvía las cuentas de cobro guardadas en la base de datos según su mes y año de generación.
               </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Mes Generación</label>
+                <select
+                  value={dbGeneracionMes}
+                  onChange={(e) => setDbGeneracionMes(parseInt(e.target.value))}
+                  className="text-xs font-bold bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer text-slate-700"
+                >
+                  {["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"].map((m, idx) => (
+                    <option key={idx + 1} value={idx + 1}>{m}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Año Generación</label>
+                <select
+                  value={dbGeneracionAnio}
+                  onChange={(e) => setDbGeneracionAnio(parseInt(e.target.value))}
+                  className="text-xs font-bold bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer text-slate-700"
+                >
+                  {[2024, 2025, 2026, 2027, 2028].map(y => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Portafolio</label>
+                <select
+                  value={dbPortafolio}
+                  onChange={(e) => setDbPortafolio(e.target.value)}
+                  className="text-xs font-bold bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer text-slate-700"
+                >
+                  <option value="Todos">Todos los Portafolios</option>
+                  <option value="PROPIEDAD HORIZONTAL">Propiedad Horizontal</option>
+                  <option value="MIXTO">Portafolio Mixto</option>
+                </select>
+              </div>
+            </div>
           </div>
         </div>
+      )}
 
+      {/* ADVERTENCIA SI MODO EXCEL SESIÓN ESTÁ VACÍO */}
+      {activeTab === 'current' && validInvoices.length === 0 ? (
+        <div className="flex flex-col items-center justify-center p-12 bg-white rounded-2xl shadow-sm border border-slate-200 text-center">
+          <FileWarning className="w-16 h-16 text-amber-500 mb-4" />
+          <h2 className="text-xl font-bold text-slate-800">No hay cuentas cargadas en esta sesión</h2>
+          <p className="text-slate-500 max-w-md mt-2 mb-6 text-sm">
+            Para enviar desde la carga actual debes subir un archivo Excel de cuentas. Si deseas reenviar cuentas que ya habías guardado antes, cambia a la pestaña <strong>"Reenviar por Mes de Generación (DB)"</strong> arriba.
+          </p>
+          <div className="flex items-center gap-3">
+            <button onClick={() => setActiveTab('database')} className="px-5 py-2.5 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 text-xs shadow-sm cursor-pointer">
+              Cambiar a Reenviar de la Base de Datos
+            </button>
+            <button onClick={() => router.push("/dashboard/upload")} className="px-5 py-2.5 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 text-xs cursor-pointer">
+              Ir a Cargar Datos
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          
+          {/* LADO IZQUIERDO: CARGUE DEL DIRECTORIO */}
+          <div className="lg:col-span-5 flex flex-col gap-6">
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+               <h3 className="font-bold text-slate-800 mb-2">1. Directorio de Correos (Excel)</h3>
+               <p className="text-sm text-slate-500 mb-6">
+                  Sube un Excel que tenga las columnas <strong className="text-slate-700">CONJUNTO</strong> o <strong className="text-slate-700">NIT</strong>, 
+                  y una columna llamada <strong className="text-slate-700">CORREO</strong> para cruzar la base de datos automáticamente.
+               </p>
 
-        {/* LADO DERECHO: CONSOLIDADO Y ENVIO */}
-        <div className="lg:col-span-7 flex flex-col gap-6">
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
-             
-             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-               <h3 className="font-bold text-slate-800">2. Cuentas Listas para Envío</h3>
-               <div className="px-3 py-1 bg-white border border-slate-200 rounded-full text-xs font-semibold text-slate-600 flex items-center shadow-sm">
-                 <Mail className="w-3.5 h-3.5 mr-1.5 text-blue-500"/>
-                 {readyToSend.length} de {validInvoices.length} listas
-               </div>
-             </div>
-
-             <div className="flex-1 overflow-y-auto p-0 min-h-[400px]">
-                {directoryData.length === 0 ? (
-                    <div className="h-full flex flex-col items-center justify-center text-slate-400 p-8 text-center min-h-[300px]">
-                        <FileSpreadsheet className="w-12 h-12 mb-3 opacity-50" />
-                        <p>Carga el directorio en el panel izquierdo para previsualizar los destinatarios calculados.</p>
+               <div 
+                  {...getRootProps()} 
+                  className={cn(
+                    "border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-300 relative overflow-hidden group",
+                    isDragActive ? "border-emerald-500 bg-emerald-50" : "border-slate-300 hover:border-emerald-400 hover:bg-emerald-50/30",
+                    directoryData.length > 0 && "border-emerald-500 bg-emerald-50"
+                  )}
+                >
+                  <input {...getInputProps()} />
+                  
+                  {directoryData.length > 0 ? (
+                    <div className="flex flex-col items-center">
+                      <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-4 shadow-inner">
+                        <CheckCircle2 className="w-8 h-8" />
+                      </div>
+                      <h3 className="text-xl font-bold text-slate-800 mb-1">Directorio Cargado</h3>
+                      <p className="text-emerald-600 font-medium mb-1">{directoryData.length} registros encontrados</p>
+                      <p className="text-xs text-slate-400 mt-4 underline decoration-dashed">Haz clic para reemplazar archivo</p>
                     </div>
-                ) : (
-                    <table className="w-full text-sm text-left">
-                        <thead className="text-xs text-slate-500 uppercase bg-slate-50 sticky top-0 z-10 shadow-sm">
-                            <tr>
-                                <th className="px-5 py-3 font-semibold">Destinatario</th>
-                                <th className="px-5 py-3 font-semibold">Cruce Correo</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {emailMapping.map((match, idx) => (
-                                <tr key={idx} className={cn("hover:bg-slate-50/50 transition-colors", !match.associatedEmail && "bg-amber-50/30")}>
-                                    <td className="px-5 py-4">
-                                        <div className="flex items-center">
-                                            <div className={cn("w-2 h-2 rounded-full mr-3 shrink-0", match.associatedEmail ? "bg-green-500" : "bg-amber-400")}></div>
-                                            <div>
-                                                <p className="font-bold text-slate-800 leading-none mb-1">{match.invoice.mapped.conjuntoNombre || 'N/A'}</p>
-                                                <p className="text-[10px] text-slate-500 font-medium">NIT: {match.invoice.mapped.cedula || 'N/A'}</p>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-5 py-4">
-                                        {match.associatedEmail ? (
-                                            <span className="flex items-center text-blue-600 font-medium text-xs">
-                                                <Mail className="w-3.5 h-3.5 mr-1.5 shrink-0"/>
-                                                {match.associatedEmail}
-                                            </span>
-                                        ) : (
-                                            <span className="text-xs text-amber-600 italic bg-amber-100/50 px-2 py-1 rounded-md">
-                                                No se encontró cruce
-                                            </span>
-                                        )}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                  ) : (
+                    <div className="flex flex-col items-center">
+                      <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm">
+                        <UploadCloud className="w-8 h-8" />
+                      </div>
+                      <h3 className="text-lg font-bold text-slate-800 mb-2">
+                         {isDragActive ? "Suelta el Excel aquí..." : "Arrastra el Directorio Excel"}
+                      </h3>
+                      <p className="text-sm text-slate-500 max-w-[250px] mx-auto">
+                         Soporta archivos .xlsx o .xls
+                      </p>
+                    </div>
+                  )}
+                  
+                  {isProcessing && (
+                    <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+                    </div>
+                  )}
+                </div>
+                
+                {errorInfo && (
+                  <div className="mt-4 p-4 bg-red-50 rounded-lg border border-red-200 text-sm text-red-700 flex items-start">
+                    <FileWarning className="w-5 h-5 mr-2 shrink-0" />
+                    <p>{errorInfo}</p>
+                  </div>
                 )}
-             </div>
+            </div>
 
-             {/* ACCION DE ENVIO */}
-             <div className="p-6 border-t border-slate-100 bg-slate-50">
-                 {!sendingState.isActive && !sendingState.completed && (
-                   <>
-                     <div className="mb-6 bg-white p-5 rounded-xl border border-blue-100 shadow-sm">
-                         <h4 className="font-bold text-slate-800 text-sm mb-3 flex items-center">
-                             <Settings className="w-4 h-4 mr-2 text-slate-500"/> Configuración de Envío SMTP (Gmail)
-                         </h4>
-                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                             <div>
-                                 <label className="block text-xs font-bold text-slate-600 mb-1">Correo Remitente (Usuario)</label>
-                                 <input 
-                                     type="email" 
-                                     value={smtpUser}
-                                     onChange={e => setSmtpUser(e.target.value)}
-                                     placeholder="ej. cartera@emdecob.com"
-                                     className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
-                                 />
-                             </div>
-                             <div>
-                                 <label className="block text-xs font-bold text-slate-600 mb-1 flex items-center">
-                                     <Lock className="w-3 h-3 mr-1"/> Contraseña de Aplicación
-                                 </label>
-                                 <input 
-                                     type="password" 
-                                     value={smtpPass}
-                                     onChange={e => setSmtpPass(e.target.value)}
-                                     placeholder="Contraseña de 16 dígitos"
-                                     className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
-                                 />
-                             </div>
-                         </div>
-                         {smtpError && <p className="text-xs text-red-500 font-medium mt-2 animate-pulse">{smtpError}</p>}
-                     </div>
-
-                     <div className="mb-6 bg-white p-5 rounded-xl border border-emerald-100 shadow-sm">
-                         <h4 className="font-bold text-slate-800 text-sm mb-3 flex items-center">
-                             <CalendarDays className="w-4 h-4 mr-2 text-emerald-500"/> Mes de Gestión para este envío
-                         </h4>
-                         <div className="grid grid-cols-2 gap-4">
-                             <div>
-                                 <label className="block text-xs font-bold text-slate-600 mb-1">Mes</label>
-                                 <select
-                                   value={envioGestionMes}
-                                   onChange={(e) => setEnvioGestionMes(parseInt(e.target.value))}
-                                   className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500"
-                                 >
-                                   {["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"].map((m, idx) => (
-                                     <option key={idx + 1} value={idx + 1}>{m}</option>
-                                   ))}
-                                 </select>
-                             </div>
-                             <div>
-                                 <label className="block text-xs font-bold text-slate-600 mb-1">Año</label>
-                                 <select
-                                   value={envioGestionAnio}
-                                   onChange={(e) => setEnvioGestionAnio(parseInt(e.target.value))}
-                                   className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500"
-                                 >
-                                   {[2024, 2025, 2026, 2027, 2028].map(y => (
-                                     <option key={y} value={y}>{y}</option>
-                                   ))}
-                                 </select>
-                             </div>
-                             <div className="col-span-2">
-                                 <label className="block text-xs font-bold text-slate-600 mb-1">Fecha de Emisión (Cuenta de Cobro)</label>
-                                 <input 
-                                   type="date"
-                                   value={envioFechaEmision}
-                                   onChange={(e) => setEnvioFechaEmision(e.target.value)}
-                                   className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500"
-                                 />
-                             </div>
-                         </div>
-                         <p className="text-[10px] text-slate-400 mt-2">Todas las cuentas enviadas se guardarán con este mes de gestión y fecha de emisión en la base de datos.</p>
-                     </div>
-                   </>
-                 )}
-
-                 {!sendingState.isActive && !sendingState.completed ? (
-                    <button 
-                        onClick={handleSimulateEmails}
-                        disabled={readyToSend.length === 0}
-                        className="w-full py-4 bg-slate-900 text-white font-bold rounded-xl flex items-center justify-center hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-slate-900/20 transition-all active:scale-[0.98]"
-                    >
-                        <Send className="w-5 h-5 mr-2" />
-                        Disparar {readyToSend.length} Correos Automáticos
-                    </button>
-                 ) : sendingState.isActive ? (
-                    <div className="w-full py-4 px-6 bg-white border border-blue-200 rounded-xl shadow-sm">
-                        <div className="flex justify-between items-center mb-3">
-                            <span className="text-sm font-bold text-slate-700 flex items-center">
-                                <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse mr-2"></span>
-                                Generando y Enviando...
-                            </span>
-                            <span className="text-sm font-medium text-blue-600">{sendingState.progress} / {sendingState.total}</span>
-                        </div>
-                        <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
-                            <div className="bg-blue-600 h-2.5 rounded-full transition-all duration-300" style={{ width: `${(sendingState.progress / sendingState.total) * 100}%` }}></div>
-                        </div>
-                        <p className="text-xs text-slate-500 mt-3 text-center truncate">
-                            Procesando PDF: <strong className="text-slate-700">{sendingState.currentName}</strong>
-                        </p>
-                    </div>
-                 ) : (
-                    <div className="w-full py-4 px-6 bg-green-600 text-white rounded-xl shadow-lg shadow-green-600/20 text-center flex items-center justify-center">
-                        <CheckCircle2 className="w-6 h-6 mr-3" />
-                        <span className="font-bold">¡Campaña finalizada exitosamente!</span>
-                    </div>
-                 )}
-                 <p className="text-center text-[10px] text-slate-400 mt-3">Los envíos se realizarán adjuntando el PDF de pre-validación (Formato Carta Oficial).</p>
-             </div>
-
+            <div className="bg-emerald-50 rounded-xl shadow-sm border border-emerald-200 p-6 flex flex-col justify-center">
+                <p className="text-sm font-medium text-emerald-800 mb-2 leading-relaxed">
+                    {activeTab === 'database' ? (
+                      <>Se encontraron <strong>{dbInvoices.length} cuentas de cobro</strong> guardadas en la Base de Datos para Generación {dbGeneracionMes}/{dbGeneracionAnio}.</>
+                    ) : (
+                      <>El sistema cuenta con <strong>{validInvoices.length} recibos de cobro validados</strong> de la sesión actual.</>
+                    )}
+                </p>
+            </div>
           </div>
-        </div>
 
-      </div>
+
+          {/* LADO DERECHO: CONSOLIDADO Y ENVIO */}
+          <div className="lg:col-span-7 flex flex-col gap-6">
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
+               
+               <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                 <h3 className="font-bold text-slate-800">2. Cuentas Listas para Envío</h3>
+                 <div className="px-3 py-1 bg-white border border-slate-200 rounded-full text-xs font-semibold text-slate-600 flex items-center shadow-sm">
+                   <Mail className="w-3.5 h-3.5 mr-1.5 text-blue-500"/>
+                   {readyToSend.length} de {activeTab === 'database' ? dbInvoices.length : validInvoices.length} listas
+                 </div>
+               </div>
+
+               <div className="flex-1 overflow-y-auto p-0 min-h-[400px]">
+                  {loadingDb ? (
+                    <div className="h-full flex flex-col items-center justify-center p-12 text-slate-500 gap-3 min-h-[300px]">
+                      <div className="w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                      <span className="text-sm font-bold">Cargando cuentas de la base de datos...</span>
+                    </div>
+                  ) : directoryData.length === 0 ? (
+                      <div className="h-full flex flex-col items-center justify-center text-slate-400 p-8 text-center min-h-[300px]">
+                          <FileSpreadsheet className="w-12 h-12 mb-3 opacity-50 text-emerald-600" />
+                          <p className="max-w-xs text-sm">Carga el directorio de correos en el panel izquierdo para realizar el cruce automático.</p>
+                      </div>
+                  ) : effectiveEmailMapping.length === 0 ? (
+                      <div className="h-full flex flex-col items-center justify-center text-slate-400 p-8 text-center min-h-[300px]">
+                          <FileWarning className="w-12 h-12 mb-3 opacity-50 text-amber-500" />
+                          <p className="max-w-xs text-sm">No hay cuentas de cobro encontradas para este filtro de Generación y Portafolio.</p>
+                      </div>
+                  ) : (
+                      <table className="w-full text-sm text-left">
+                          <thead className="text-xs text-slate-500 uppercase bg-slate-50 sticky top-0 z-10 shadow-sm">
+                              <tr>
+                                  <th className="px-5 py-3 font-semibold">Consecutivo / Destinatario</th>
+                                  <th className="px-5 py-3 font-semibold">Cruce Correo</th>
+                              </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                              {effectiveEmailMapping.map((match, idx) => (
+                                  <tr key={idx} className={cn("hover:bg-slate-50/50 transition-colors", !match.associatedEmail && "bg-amber-50/30")}>
+                                      <td className="px-5 py-4">
+                                          <div className="flex items-center">
+                                              <div className={cn("w-2 h-2 rounded-full mr-3 shrink-0", match.associatedEmail ? "bg-green-500" : "bg-amber-400")}></div>
+                                              <div>
+                                                  <p className="font-bold text-slate-800 leading-none mb-1">
+                                                    <span className="text-emerald-700 font-extrabold mr-1.5">{match.invoice.mapped.consecutivo}</span> 
+                                                    {match.invoice.mapped.conjuntoNombre || 'N/A'}
+                                                  </p>
+                                                  <p className="text-[10px] text-slate-500 font-medium">NIT/Cédula: {match.invoice.mapped.cedula || 'N/A'}</p>
+                                              </div>
+                                          </div>
+                                      </td>
+                                      <td className="px-5 py-4">
+                                          {match.associatedEmail ? (
+                                              <span className="flex items-center text-blue-600 font-medium text-xs">
+                                                  <Mail className="w-3.5 h-3.5 mr-1.5 shrink-0"/>
+                                                  {match.associatedEmail}
+                                              </span>
+                                          ) : (
+                                              <span className="text-xs text-amber-600 italic bg-amber-100/50 px-2 py-1 rounded-md">
+                                                  No se encontró cruce
+                                              </span>
+                                          )}
+                                      </td>
+                                  </tr>
+                              ))}
+                          </tbody>
+                      </table>
+                  )}
+               </div>
+
+               {/* ACCION DE ENVIO */}
+               <div className="p-6 border-t border-slate-100 bg-slate-50">
+                   {!sendingState.isActive && !sendingState.completed && (
+                     <>
+                       <div className="mb-6 bg-white p-5 rounded-xl border border-blue-100 shadow-sm">
+                           <h4 className="font-bold text-slate-800 text-sm mb-3 flex items-center">
+                               <Settings className="w-4 h-4 mr-2 text-slate-500"/> Configuración de Envío SMTP (Gmail)
+                           </h4>
+                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                               <div>
+                                   <label className="block text-xs font-bold text-slate-600 mb-1">Correo Remitente (Usuario)</label>
+                                   <input 
+                                       type="email" 
+                                       value={smtpUser}
+                                       onChange={e => setSmtpUser(e.target.value)}
+                                       placeholder="ej. cartera@emdecob.com"
+                                       className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+                                   />
+                               </div>
+                               <div>
+                                   <label className="block text-xs font-bold text-slate-600 mb-1 flex items-center">
+                                       <Lock className="w-3 h-3 mr-1"/> Contraseña de Aplicación
+                                   </label>
+                                   <input 
+                                       type="password" 
+                                       value={smtpPass}
+                                       onChange={e => setSmtpPass(e.target.value)}
+                                       placeholder="Contraseña de 16 dígitos"
+                                       className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+                                   />
+                               </div>
+                           </div>
+                           {smtpError && <p className="text-xs text-red-500 font-medium mt-2 animate-pulse">{smtpError}</p>}
+                       </div>
+
+                       {activeTab === 'current' && (
+                         <div className="mb-6 bg-white p-5 rounded-xl border border-emerald-100 shadow-sm">
+                             <h4 className="font-bold text-slate-800 text-sm mb-3 flex items-center">
+                                 <CalendarDays className="w-4 h-4 mr-2 text-emerald-500"/> Mes de Gestión para este envío
+                             </h4>
+                             <div className="grid grid-cols-2 gap-4">
+                                 <div>
+                                     <label className="block text-xs font-bold text-slate-600 mb-1">Mes</label>
+                                     <select
+                                       value={envioGestionMes}
+                                       onChange={(e) => setEnvioGestionMes(parseInt(e.target.value))}
+                                       className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500"
+                                     >
+                                       {["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"].map((m, idx) => (
+                                         <option key={idx + 1} value={idx + 1}>{m}</option>
+                                       ))}
+                                     </select>
+                                 </div>
+                                 <div>
+                                     <label className="block text-xs font-bold text-slate-600 mb-1">Año</label>
+                                     <select
+                                       value={envioGestionAnio}
+                                       onChange={(e) => setEnvioGestionAnio(parseInt(e.target.value))}
+                                       className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500"
+                                     >
+                                       {[2024, 2025, 2026, 2027, 2028].map(y => (
+                                         <option key={y} value={y}>{y}</option>
+                                       ))}
+                                     </select>
+                                 </div>
+                                 <div className="col-span-2">
+                                     <label className="block text-xs font-bold text-slate-600 mb-1">Fecha de Emisión (Cuenta de Cobro)</label>
+                                     <input 
+                                       type="date"
+                                       value={envioFechaEmision}
+                                       onChange={(e) => setEnvioFechaEmision(e.target.value)}
+                                       className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500"
+                                     />
+                                 </div>
+                             </div>
+                             <p className="text-[10px] text-slate-400 mt-2">Todas las cuentas enviadas se guardarán con este mes de gestión y fecha de emisión en la base de datos.</p>
+                         </div>
+                       )}
+                     </>
+                   )}
+
+                   {!sendingState.isActive && !sendingState.completed ? (
+                      <button 
+                          onClick={handleSimulateEmails}
+                          disabled={readyToSend.length === 0}
+                          className="w-full py-4 bg-slate-900 text-white font-bold rounded-xl flex items-center justify-center hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-slate-900/20 transition-all active:scale-[0.98] cursor-pointer text-sm"
+                      >
+                          <Send className="w-5 h-5 mr-2" />
+                          {activeTab === 'database' 
+                            ? `Disparar Reenvío de ${readyToSend.length} Correos (Generación ${dbGeneracionMes}/${dbGeneracionAnio})` 
+                            : `Disparar ${readyToSend.length} Correos Automáticos`
+                          }
+                      </button>
+                   ) : sendingState.isActive ? (
+                      <div className="w-full py-4 px-6 bg-white border border-blue-200 rounded-xl shadow-sm">
+                          <div className="flex justify-between items-center mb-3">
+                              <span className="text-sm font-bold text-slate-700 flex items-center">
+                                  <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse mr-2"></span>
+                                  Generando PDF y Enviando Correo...
+                              </span>
+                              <span className="text-sm font-medium text-blue-600">{sendingState.progress} / {sendingState.total}</span>
+                          </div>
+                          <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                              <div className="bg-blue-600 h-2.5 rounded-full transition-all duration-300" style={{ width: `${(sendingState.progress / sendingState.total) * 100}%` }}></div>
+                          </div>
+                          <p className="text-xs text-slate-500 mt-3 text-center truncate">
+                              Procesando PDF: <strong className="text-slate-700">{sendingState.currentName}</strong>
+                          </p>
+                      </div>
+                   ) : (
+                      <div className="w-full py-4 px-6 bg-green-600 text-white rounded-xl shadow-lg shadow-green-600/20 text-center flex flex-col items-center justify-center gap-2">
+                          <div className="flex items-center">
+                            <CheckCircle2 className="w-6 h-6 mr-2" />
+                            <span className="font-bold text-base">¡Campaña de envío finalizada exitosamente!</span>
+                          </div>
+                          <button 
+                            onClick={() => setSendingState(prev => ({ ...prev, completed: false, progress: 0 }))} 
+                            className="mt-2 text-xs underline text-white/90 hover:text-white font-medium cursor-pointer"
+                          >
+                            Hacer otro envío
+                          </button>
+                      </div>
+                   )}
+                   <p className="text-center text-[10px] text-slate-400 mt-3">Los envíos se realizarán adjuntando el PDF oficial correspondiente.</p>
+               </div>
+
+            </div>
+          </div>
+
+        </div>
+      )}
 
       {/* Contenedor Oculto para Renderizar las Plantillas PDF en el DOM */}
       <div 

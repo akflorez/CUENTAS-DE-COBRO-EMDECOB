@@ -859,4 +859,31 @@ export async function getPendingInvoices(portafolio?: string) {
   }
 }
 
+export async function getInvoicesForResend(generacionMes: number, generacionAnio: number, portafolio?: string) {
+  try {
+    const prisma = getPrisma();
+    const where: any = {
+      generacionMes,
+      generacionAnio
+    };
+
+    if (portafolio && portafolio !== "Todos") {
+      where.portafolio = portafolio;
+    }
+
+    const invoices = await prisma.invoice.findMany({
+      where,
+      include: {
+        items: true
+      },
+      orderBy: { consecutivo: 'asc' }
+    });
+
+    return JSON.parse(JSON.stringify({ success: true, invoices }));
+  } catch (error: any) {
+    console.error("Error fetching invoices for resend:", error);
+    return JSON.parse(JSON.stringify({ success: false, error: error.message }));
+  }
+}
+
 
