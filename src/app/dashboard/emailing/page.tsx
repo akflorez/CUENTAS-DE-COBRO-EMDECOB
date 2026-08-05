@@ -424,25 +424,8 @@ export default function EmailingPage() {
         </div>
       )}
 
-      {/* ADVERTENCIA SI MODO EXCEL SESIÓN ESTÁ VACÍO */}
-      {activeTab === 'current' && validInvoices.length === 0 ? (
-        <div className="flex flex-col items-center justify-center p-12 bg-white rounded-2xl shadow-sm border border-slate-200 text-center">
-          <FileWarning className="w-16 h-16 text-amber-500 mb-4" />
-          <h2 className="text-xl font-bold text-slate-800">No hay cuentas cargadas en esta sesión</h2>
-          <p className="text-slate-500 max-w-md mt-2 mb-6 text-sm">
-            Para enviar desde la carga actual debes subir un archivo Excel de cuentas. Si deseas reenviar cuentas que ya habías guardado antes, cambia a la pestaña <strong>"Reenviar por Mes de Generación (DB)"</strong> arriba.
-          </p>
-          <div className="flex items-center gap-3">
-            <button onClick={() => setActiveTab('database')} className="px-5 py-2.5 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 text-xs shadow-sm cursor-pointer">
-              Cambiar a Reenviar de la Base de Datos
-            </button>
-            <button onClick={() => router.push("/dashboard/upload")} className="px-5 py-2.5 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 text-xs cursor-pointer">
-              Ir a Cargar Datos
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      {/* VISTA PRINCIPAL DE ENVÍO */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
           {/* LADO IZQUIERDO: CARGUE DEL DIRECTORIO */}
           <div className="lg:col-span-5 flex flex-col gap-6">
@@ -713,7 +696,6 @@ export default function EmailingPage() {
           </div>
 
         </div>
-      )}
 
       {/* Contenedor Oculto para Renderizar las Plantillas PDF en el DOM */}
       <div 
