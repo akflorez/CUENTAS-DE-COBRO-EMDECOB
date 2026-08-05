@@ -75,15 +75,15 @@ export default function GestionPage() {
         getConjuntos(dbPortafolio)
       ]);
       
-      if (invRes.success) {
+      if (invRes?.success) {
         setInvoices(invRes.invoices || []);
         setTotalPages(invRes.totalPages || 1);
         setTotalCount(invRes.totalCount || 0);
       } else {
-        setError(invRes.error || "Error cargando facturas.");
+        setError(invRes?.error || "Error cargando facturas.");
       }
  
-      if (conjRes.success) {
+      if (conjRes?.success) {
         setConjuntos(conjRes.conjuntos || []);
       }
     } catch (err: any) {
@@ -163,8 +163,8 @@ export default function GestionPage() {
      setIsDownloading("BULK");
      try {
        // Obtener todos los registros del filtro actual (sin paginación, o página muy grande)
-       const res = await getInvoices(1, 1000, dbConjunto, filterGenMes, filterGenAnio, debouncedSearch, debouncedValor);
-       if (!res.success) throw new Error(res.error);
+        const res = await getInvoices(1, 1000, dbConjunto, filterGenMes, filterGenAnio, debouncedSearch, debouncedValor, dbPortafolio, filterStatus);
+        if (!res?.success) throw new Error(res?.error || "Error al obtener facturas");
        
        let allInvoices = res.invoices;
        if (allInvoices.length === 0) {
@@ -227,8 +227,8 @@ export default function GestionPage() {
     const handleExportExcel = async () => {
       setIsDownloading("EXCEL");
       try {
-        const res = await getInvoices(1, 2000, dbConjunto, filterGenMes, filterGenAnio, debouncedSearch, debouncedValor);
-        if (!res.success) throw new Error(res.error);
+        const res = await getInvoices(1, 1000, dbConjunto, filterGenMes, filterGenAnio, debouncedSearch, debouncedValor, dbPortafolio, filterStatus);
+        if (!res?.success) throw new Error(res?.error || "Error al obtener facturas");
         
         const allInvoices = res.invoices;
         if (allInvoices.length === 0) {

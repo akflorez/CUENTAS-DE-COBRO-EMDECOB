@@ -133,48 +133,6 @@ export async function getInvoices(
 ) {
   try {
     const prisma = getPrisma();
-
-    // Autocorrección: Asignar generacionMes/Anio si están en null para registros existentes
-    const nullInvoices = await prisma.invoice.findMany({
-      where: {
-        OR: [
-          { generacionMes: null },
-          { generacionAnio: null }
-        ]
-      },
-      select: { id: true, fechaElaboracion: true, createdAt: true }
-    });
-    if (nullInvoices.length > 0) {
-      console.log(`[Self-healing] Actualizando ${nullInvoices.length} facturas con generacionMes/Anio en null`);
-      for (const inv of nullInvoices) {
-        const d = inv.fechaElaboracion || inv.createdAt;
-        await prisma.invoice.update({
-          where: { id: inv.id },
-          data: {
-            generacionMes: d.getMonth() + 1,
-            generacionAnio: d.getFullYear()
-          }
-        });
-      }
-    }
-
-    // Autocorrección: Asignar portafolio MIXTO a entidades mixtas conocidas si están en PH
-    await (prisma.invoice as any).updateMany({
-      where: {
-        OR: [
-          { conjuntoNombre: { contains: "TOLE", mode: "insensitive" } },
-          { conjuntoNombre: { contains: "SERFINANZA", mode: "insensitive" } },
-          { conjuntoNombre: { contains: "RENTA EQUIPOS", mode: "insensitive" } },
-          { conjuntoNombre: { contains: "JULIETA", mode: "insensitive" } },
-          { conjuntoNombre: { contains: "COMISIÓ", mode: "insensitive" } }
-        ],
-        portafolio: "PROPIEDAD HORIZONTAL"
-      },
-      data: {
-        portafolio: "MIXTO"
-      }
-    });
-
     const where: any = {};
     if (conjunto && conjunto !== "Todos") {
       where.conjuntoNombre = conjunto;
