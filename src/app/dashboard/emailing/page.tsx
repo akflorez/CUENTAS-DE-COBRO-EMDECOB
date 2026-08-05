@@ -315,17 +315,6 @@ export default function EmailingPage() {
   };
 
 
-  if (validInvoices.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center p-12 bg-white rounded-xl shadow-sm border border-slate-200">
-        <FileWarning className="w-16 h-16 text-amber-500 mb-4" />
-        <h2 className="text-xl font-bold text-slate-800">No hay facturas listas</h2>
-        <p className="text-slate-500 max-w-md text-center mt-2 mb-6">Debes subir y validar tu data de Gestión de Cartera antes de poder cruzarla con el directorio de correos.</p>
-        <button onClick={() => router.push("/dashboard/upload")} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Ir a Cargar Datos</button>
-      </div>
-    );
-  }
-
   return (
     <div className="max-w-6xl mx-auto pb-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
