@@ -13,6 +13,10 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+ENV DATABASE_URL="postgresql://user:password@localhost:5432/dbname"
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
@@ -26,6 +30,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
 ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 ENV HOME=/tmp
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
