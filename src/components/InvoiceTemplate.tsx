@@ -28,12 +28,43 @@ export const InvoiceTemplate = React.forwardRef<HTMLDivElement, Props>(({ data }
 
   const formatDate = (dateValue: any) => {
     if (!dateValue) return new Date().toLocaleDateString('es-CO');
-    if (dateValue instanceof Date) return dateValue.toLocaleDateString('es-CO');
-    if (typeof dateValue === 'number') {
-      const date = new Date((dateValue - (25567 + 1)) * 86400 * 1000);
-      if (!isNaN(date.getTime())) return date.toLocaleDateString('es-CO');
+    if (dateValue instanceof Date) {
+      if (isNaN(dateValue.getTime())) return '';
+      const day = String(dateValue.getUTCDate()).padStart(2, '0');
+      const month = String(dateValue.getUTCMonth() + 1).padStart(2, '0');
+      const year = dateValue.getUTCFullYear();
+      return `${day}/${month}/${year}`;
     }
-    return String(dateValue).substring(0, 10);
+
+    const str = String(dateValue).trim();
+    const num = Number(str);
+
+    // Si es un número serial de fecha de Excel (ej: 46219 = 16/07/2026)
+    if (!isNaN(num) && num > 30000 && num < 100000) {
+      const utcDays = num - 25569;
+      const utcValue = utcDays * 86400;
+      const dateInfo = new Date(utcValue * 1000);
+      const year = dateInfo.getUTCFullYear();
+      const month = String(dateInfo.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(dateInfo.getUTCDate()).padStart(2, '0');
+      return `${day}/${month}/${year}`;
+    }
+
+    if (str.includes('-') || str.includes('/')) {
+      const parts = str.split(/[-/T ]/);
+      if (parts.length >= 3) {
+        if (parts[0].length === 4) {
+          // YYYY-MM-DD
+          return `${parts[2].padStart(2, '0')}/${parts[1].padStart(2, '0')}/${parts[0]}`;
+        } else if (parts[2].length === 4 || parts[2].length === 2) {
+          // DD/MM/YYYY
+          const y = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
+          return `${parts[0].padStart(2, '0')}/${parts[1].padStart(2, '0')}/${y}`;
+        }
+      }
+    }
+
+    return str;
   };
 
   return (

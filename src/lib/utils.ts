@@ -12,11 +12,10 @@ export function parseExcelDate(excelDate: any): Date | null {
       if (!isNaN(excelDate.getTime())) return excelDate;
   }
 
-  if (typeof excelDate === 'number') {
-    // Excel epoch starts at Jan 1, 1900.
-    // Excel incorrectly assumes 1900 is a leap year.
+  const num = typeof excelDate === 'number' ? excelDate : Number(String(excelDate).trim());
+  if (!isNaN(num) && num > 30000 && num < 100000) {
     const excelEpoch = new Date(Date.UTC(1899, 11, 30)); 
-    return new Date(excelEpoch.getTime() + excelDate * 86400000);
+    return new Date(excelEpoch.getTime() + num * 86400000);
   }
 
   if (typeof excelDate === 'string') {
