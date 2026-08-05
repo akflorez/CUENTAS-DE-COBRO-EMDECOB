@@ -47,6 +47,40 @@ export type MappedRecord = {
   granTotal: number;
 };
 
+export function formatExcelSerialOrDate(val: any): string {
+  if (!val) return "";
+  if (val instanceof Date) {
+    if (isNaN(val.getTime())) return "";
+    const day = String(val.getUTCDate()).padStart(2, '0');
+    const month = String(val.getUTCMonth() + 1).padStart(2, '0');
+    const year = val.getUTCFullYear();
+    return `${day}/${month}/${year}`;
+  }
+  const str = String(val).trim();
+  const num = Number(str);
+  if (!isNaN(num) && num > 30000 && num < 100000) {
+    const utcDays = num - 25569;
+    const utcValue = utcDays * 86400;
+    const dateInfo = new Date(utcValue * 1000);
+    const year = dateInfo.getUTCFullYear();
+    const month = String(dateInfo.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(dateInfo.getUTCDate()).padStart(2, '0');
+    return `${day}/${month}/${year}`;
+  }
+  if (str.includes('-') || str.includes('/')) {
+    const parts = str.split(/[-/T ]/);
+    if (parts.length >= 3) {
+      if (parts[0].length === 4) {
+        return `${parts[2].padStart(2, '0')}/${parts[1].padStart(2, '0')}/${parts[0]}`;
+      } else if (parts[2].length === 4 || parts[2].length === 2) {
+        const y = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
+        return `${parts[0].padStart(2, '0')}/${parts[1].padStart(2, '0')}/${y}`;
+      }
+    }
+  }
+  return str;
+}
+
 // Intenta encontrar la propiedad en el objeto ignorando mayusculas/minusculas o espacios al inicio/final
 const findCol = (row: any, ...possibleNames: string[]) => {
   const keys = Object.keys(row);
@@ -119,8 +153,7 @@ export function mapRawRecord(row: any) {
       return isTole ? (rawIva + iva2) : rawIva;
     })(),
     total: parseNumber(findCol(row, "TOTAL", "TOTAL ", "VALOR TOTAL", "TOTAL A PAGAR")),
-    valorAdministracion,
-    fechaPago: findCol(row, "Fecha ingreso dinero", "FECHA INGRESO DINERO", "FECHA INGRESO DEL DINERO", "FECHA INGRESO", "FECHA DE PAGO", "FECHA PAGO", "FECHA"),
+    fechaPago: formatExcelSerialOrDate(findCol(row, "Fecha ingreso dinero", "FECHA INGRESO DINERO", "FECHA INGRESO DEL DINERO", "FECHA INGRESO", "FECHA DE PAGO", "FECHA PAGO", "FECHA")),
     fechaIngreso: findCol(row, "Fecha ingreso dinero", "FECHA INGRESO DINERO", "FECHA INGRESO DEL DINERO", "FECHA INGRESO"),
     fechaElaboracion: findCol(row, "FECHA ELABORACION", "FECHA CREACION", "FECHA CUENTA DE COBRO", "FECHA DE CREACION", "FECHA DE ENVIO", "FECHA ENVIO") || fileRefDate,
     estadoCobro: findCol(row, "CUENTA DE COBRO", "CUENTA DE COBRO "),
@@ -130,6 +163,7 @@ export function mapRawRecord(row: any) {
     // Extracción de Gestión (Directo del archivo)
     archivoGestionMes: findCol(row, "GESTION", "MES GESTION", "CICLO", "MES GESTIÓN"),
     archivoGestionAnio: findCol(row, "ANIO GESTION", "AÑO GESTION", "AÑO", "ANIO"),
+    valorAdministracion,
 
     originalRow: row
   };

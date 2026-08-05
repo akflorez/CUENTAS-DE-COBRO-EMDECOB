@@ -6,7 +6,7 @@ import { useAppContext } from "@/context/AppContext";
 import { useDropzone } from "react-dropzone";
 import * as XLSX from "xlsx";
 import { UploadCloud, CheckCircle2, FileSpreadsheet, FileWarning, Send, Mail, Settings, Lock, CalendarDays } from "lucide-react";
-import { validateRecord, groupRecords, MappedRecord } from "@/lib/mapper";
+import { validateRecord, groupRecords, MappedRecord, formatExcelSerialOrDate } from "@/lib/mapper";
 import { getPdfBlob } from "@/lib/pdfGenerator";
 import { InvoiceTemplate } from "@/components/InvoiceTemplate";
 import { cn } from "@/lib/utils";
@@ -31,7 +31,7 @@ function dbInvoiceToMappedRecord(dbInv: any): MappedRecord {
     ivaTotal: dbInv.ivaTotal || 0,
     granTotal: dbInv.granTotal || 0,
     items: (dbInv.items && dbInv.items.length > 0) ? dbInv.items.map((it: any) => ({
-      fechaPago: it.fechaPago || "",
+      fechaPago: formatExcelSerialOrDate(it.fechaPago),
       fechaIngresoPorte: it.fechaIngresoPorte || "",
       fechaElaboracion: it.fechaElaboracion || (dbInv.fechaElaboracion ? new Date(dbInv.fechaElaboracion).toISOString().split('T')[0] : ""),
       predio: it.predio || "",
