@@ -20,6 +20,7 @@ export default async function DebugPage() {
     DATABASE_URL: process.env.DATABASE_URL ? 'DEFINIDA (Presente)' : 'NO DEFINIDA (Falta)',
     NODE_ENV: process.env.NODE_ENV || 'Sin definir',
     NEXT_RUNTIME: (process as any).env?.NEXT_RUNTIME || 'Desconocido',
+    BUILD_VERSION: '3264948 - Reenvío por Mes de Generación Habilitado (2026-08-05 11:17 UTC)',
   };
 
   return (
